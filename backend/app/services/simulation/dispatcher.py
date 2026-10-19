@@ -23,6 +23,7 @@ from app.schemas.environment import (
     Shelter,
     TerrainType,
 )
+from app.schemas.evaluation import DispatchStrategy
 from app.schemas.route import MovementProfile
 from app.services.simulation.pathfinding import AStarPathfinder
 from app.services.simulation.prioritization import RescuePrioritizer
@@ -147,17 +148,23 @@ class RescueCoordinator:
         grid: CityGrid,
         current_tick: int,
         missions: List[RescueMission],
+        strategy: DispatchStrategy = DispatchStrategy.AI_TRIAGE,
     ) -> Tuple[List[RescueMission], List[str]]:
-        """Evaluate triage queue and assign feasible rescue missions to available agents.
+        """Evaluate rescue queue and assign feasible missions to available agents.
         
-        Guarantees:
-        - Civilians evaluated in strict deterministic triage order from RescuePrioritizer.
-        - Only unrescued, non-in-transit, unassigned civilians are eligible.
-        - Only idle agents without active missions are assigned.
-        - Feasibility verified using AStarPathfinder for the agent's exact movement profile.
-        - Unreachable high-priority targets do not block reachable lower-priority targets.
-        - Stable tie-breaking across agent candidates: (route cost, profile preference, agent ID).
+        Supports two strategy modes:
+        - AI_TRIAGE: Deterministic multi-factor triage priority queue (Phase 4 & 5).
+        - BASELINE_FIFO: Naive FIFO / ID-ordered dispatch without triage ranking (Phase 7 baseline).
         """
+        if strategy == DispatchStrategy.BASELINE_FIFO:
+            return cls.dispatch_baseline_idle_agents(
+                agents=agents,
+                civilians=civilians,
+                grid=grid,
+                current_tick=current_tick,
+                missions=missions,
+            )
+
         events: List[str] = []
         new_missions: List[RescueMission] = []
 
@@ -268,6 +275,118 @@ class RescueCoordinator:
                 # Target currently unreachable by all idle responders; log and proceed to next civilian
                 events.append(
                     f"Civilian {civ.id} (Triage #{rank}) is currently unreachable by available agents. Deferring to next priority."
+                )
+
+        return new_missions, events
+
+    @classmethod
+    def dispatch_baseline_idle_agents(
+        cls,
+        agents: List[RescueAgent],
+        civilians: List[Civilian],
+        grid: CityGrid,
+        current_tick: int,
+        missions: List[RescueMission],
+    ) -> Tuple[List[RescueMission], List[str]]:
+        """Baseline strategy: Dispatch idle agents to eligible civilians in naive fixed ID order.
+        
+        Guarantees:
+        - Evaluates eligible unrescued civilians in simple alphanumeric ID order (naive FIFO queue).
+        - Does NOT use civilian health, urgency, hazard exposure, or triage priority scores.
+        - Assigns nearest reachable idle agent using standard A* pathfinding.
+        - Same environmental safety and collision rules as the AI coordinator for fair comparison.
+        """
+        events: List[str] = []
+        new_missions: List[RescueMission] = []
+
+        # 1. Identify active civilian targets
+        active_target_ids = {
+            m.civilian_id
+            for m in missions
+            if m.status in (MissionStatus.ASSIGNED, MissionStatus.EN_ROUTE, MissionStatus.RESCUING, MissionStatus.TRANSPORTING)
+        }
+
+        # 2. Select eligible civilians ordered strictly by civilian ID (naive ordering)
+        eligible_civilians = [
+            c for c in sorted(civilians, key=lambda civ: civ.id)
+            if c.status not in (CivilianStatus.RESCUED, CivilianStatus.IN_TRANSIT)
+            and c.id not in active_target_ids
+        ]
+
+        # 3. Find available idle agents sorted deterministically by ID
+        available_agents = [
+            a for a in agents
+            if a.status == AgentStatus.IDLE and a.current_mission_id is None
+        ]
+        available_agents.sort(key=lambda a: a.id)
+
+        if not available_agents or not eligible_civilians:
+            return new_missions, events
+
+        # 4. Greedy matching along fixed ID order
+        assigned_agent_ids = set()
+
+        for civ in eligible_civilians:
+            idle_pool = [a for a in available_agents if a.id not in assigned_agent_ids]
+            if not idle_pool:
+                break
+
+            candidate_routes: List[Tuple[float, int, str, RescueAgent, List[Coordinate]]] = []
+
+            for agent in idle_pool:
+                route_res = AStarPathfinder.plan_route(
+                    grid,
+                    agent.coordinate,
+                    civ.coordinate,
+                    agent.movement_profile,
+                )
+                if route_res.found:
+                    candidate_routes.append((
+                        route_res.total_cost,
+                        route_res.path_length,
+                        agent.id,
+                        agent,
+                        route_res.path,
+                    ))
+
+            if candidate_routes:
+                # Select nearest reachable agent: minimum route cost, path length, agent ID
+                candidate_routes.sort(key=lambda c: (c[0], c[1], c[2]))
+                best_cost, _, _, chosen_agent, best_path = candidate_routes[0]
+
+                mission_id = f"mission_baseline_{civ.id}_{current_tick}_{chosen_agent.id}"
+                explanation = (
+                    f"Baseline Dispatch: Dispatched {chosen_agent.name} to rescue Civilian {civ.id} "
+                    f"(Naive ID order, route cost {best_cost:.1f})."
+                )
+
+                mission = RescueMission(
+                    id=mission_id,
+                    agent_id=chosen_agent.id,
+                    civilian_id=civ.id,
+                    target_coordinate=civ.coordinate,
+                    shelter_id=None,
+                    shelter_coordinate=None,
+                    status=MissionStatus.EN_ROUTE,
+                    route=best_path,
+                    route_step_index=0,
+                    created_at_tick=current_tick,
+                    completed_at_tick=None,
+                    explanation=explanation,
+                )
+                new_missions.append(mission)
+                missions.append(mission)
+
+                chosen_agent.status = AgentStatus.EN_ROUTE
+                chosen_agent.current_mission_id = mission_id
+                chosen_agent.target_civilian_id = civ.id
+                chosen_agent.active_path = best_path[1:] if len(best_path) > 1 else []
+
+                assigned_agent_ids.add(chosen_agent.id)
+                events.append(explanation)
+            else:
+                events.append(
+                    f"Baseline Dispatch: Civilian {civ.id} is currently unreachable by available agents. Deferring."
                 )
 
         return new_missions, events

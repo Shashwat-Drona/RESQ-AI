@@ -104,6 +104,12 @@ class FloodSimulationModel:
                 cell = grid.cells[r][c]
                 if cell.terrain == TerrainType.BUILDING:
                     continue
+                if cell.terrain == TerrainType.SHELTER:
+                    # Shelters are equipped with elevated foundations and active drainage pumps
+                    cell.water_level = min(0.60, round(new_water[r][c], 2))
+                    cell.hazard = HazardState.FLOODED if cell.water_level >= self.SHALLOW_FLOOD_THRESHOLD else HazardState.SAFE
+                    cell.traversable = True
+                    continue
 
                 prev_hazard = cell.hazard
                 cell.water_level = round(new_water[r][c], 2)

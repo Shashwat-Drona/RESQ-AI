@@ -15,11 +15,13 @@ import { RescuePriorityQueue } from "@/components/RescuePriorityQueue";
 import { RescueAgentPanel } from "@/components/RescueAgentPanel";
 import { MissionControlPanel } from "@/components/MissionControlPanel";
 import { EventTimeline } from "@/components/EventTimeline";
+import { StrategyEvaluationPanel } from "@/components/StrategyEvaluationPanel";
 import {
   API_BASE_URL,
   getAppInfo,
   getDefaultConfig,
   getHealth,
+  getLatestEvaluation,
   getRescueAgents,
   getRescueMissions,
   getRescuePriorities,
@@ -31,6 +33,7 @@ import {
   AppInfoResponse,
   Coordinate,
   DispatchSummary,
+  EvaluationResponse,
   HealthResponse,
   PrioritiesResponse,
   RescueAgent,
@@ -69,6 +72,9 @@ export default function HomePage() {
 
   // Phase 5 / 6 Event Timeline
   const [events, setEvents] = useState<string[]>([]);
+
+  // Phase 7 Baseline Strategy Evaluation State
+  const [latestEvaluation, setLatestEvaluation] = useState<EvaluationResponse | null>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +130,7 @@ export default function HomePage() {
       setLastChecked(new Date());
       void refreshPriorities();
       void refreshFleetAndMissions();
+      void getLatestEvaluation().then(setLatestEvaluation).catch(() => {});
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -160,6 +167,7 @@ export default function HomePage() {
         setLastChecked(new Date());
         void refreshPriorities();
         void refreshFleetAndMissions();
+        void getLatestEvaluation().then(setLatestEvaluation).catch(() => {});
       } catch (err: unknown) {
         if (ignore) return;
         const msg =
@@ -214,7 +222,7 @@ export default function HomePage() {
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase="Phase 6: Professional Disaster Command Dashboard"
+        phase="Phase 7: Strategy Evaluation & Baseline Benchmark"
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -327,7 +335,13 @@ export default function HomePage() {
           isSimulationActive={isSimulationActive}
         />
 
-        {/* Section 09: System Telemetry Grid */}
+        {/* Section 09: Empirical Strategy Evaluation & Baseline Benchmark */}
+        <StrategyEvaluationPanel
+          scenarios={scenarios}
+          initialEvaluation={latestEvaluation}
+        />
+
+        {/* Section 10: System Telemetry Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ProjectStatusCard info={appInfo} isLoading={isLoading} />
           <SimulationStateCard state={simulationState} isLoading={isLoading} />
@@ -339,7 +353,7 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            RESQ-AI &copy; 2026 — Disaster Response Simulator. Phase 6: Professional Disaster Command Dashboard.
+            RESQ-AI &copy; 2026 — Disaster Response Simulator. Phase 7: Strategy Evaluation &amp; Baseline Benchmark.
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>API: {API_BASE_URL}</span>

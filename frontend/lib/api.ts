@@ -7,6 +7,8 @@
 import {
   AgentsResponse,
   AppInfoResponse,
+  EvaluationRequest,
+  EvaluationResponse,
   EventsResponse,
   HealthResponse,
   MissionsResponse,
@@ -212,4 +214,24 @@ export async function getRescueMissions(): Promise<MissionsResponse> {
 export async function getSimulationEvents(): Promise<EventsResponse> {
   return request<EventsResponse>("/api/v1/simulation/events");
 }
+
+/**
+ * Run empirical benchmark evaluation comparing AI triage against naive baseline.
+ */
+export async function runEvaluation(
+  payload: EvaluationRequest = {}
+): Promise<EvaluationResponse> {
+  return request<EvaluationResponse>("/api/v1/simulation/evaluate", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Fetch most recent benchmark evaluation results.
+ */
+export async function getLatestEvaluation(): Promise<EvaluationResponse | null> {
+  return request<EvaluationResponse | null>("/api/v1/simulation/evaluate/latest");
+}
+
 

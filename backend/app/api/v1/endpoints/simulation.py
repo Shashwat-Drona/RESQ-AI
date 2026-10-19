@@ -1,8 +1,9 @@
 """Simulation lifecycle and environment endpoints."""
 
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.agent import AgentsResponse, EventsResponse, MissionsResponse
+from app.schemas.evaluation import EvaluationRequest, EvaluationResponse
 from app.schemas.prioritization import PrioritiesResponse
 from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
@@ -169,4 +170,37 @@ async def get_rescue_missions() -> MissionsResponse:
 async def get_simulation_events() -> EventsResponse:
     """Retrieve operational event logs and autonomous dispatch notifications."""
     return SimulationService.get_events()
+
+
+@router.post(
+    "/simulation/evaluate",
+    response_model=EvaluationResponse,
+    summary="Run empirical benchmark comparing AI Triage against Naive Baseline",
+)
+async def evaluate_strategies(payload: EvaluationRequest) -> EvaluationResponse:
+    """Run an isolated deterministic benchmark comparing RESQ-AI against the Baseline strategy.
+    
+    Guarantees:
+    - Runs in isolated SimulationEngine instances; does not affect active dashboard simulation.
+    - Evaluates identical scenario grids, civilian spawns, shelter locations, and seeds.
+    - Compares rescues, critical rescues, average rescue ticks, civilian health, and failed missions.
+    """
+    try:
+        return SimulationService.evaluate(payload)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        )
+
+
+@router.get(
+    "/simulation/evaluate/latest",
+    response_model=Optional[EvaluationResponse],
+    summary="Get latest benchmark evaluation results",
+)
+async def get_latest_evaluation() -> Optional[EvaluationResponse]:
+    """Retrieve the most recent strategy comparison benchmark report if available."""
+    return SimulationService.get_latest_evaluation()
+
 

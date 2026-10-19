@@ -1,26 +1,33 @@
 # RESQ-AI: AI-Powered Disaster Response & Rescue Simulator
 
-> **College AI Project — Phase 6: Professional Disaster Command Dashboard & Interactive Map Polish**
+> **College AI Project — Phase 7: Evaluation Against a Baseline Strategy**
 
 RESQ-AI is an autonomous disaster response simulator modeling emergency operations (floods, earthquakes) across an urban grid. The system incorporates AI-driven rescue agents, dynamic road obstructions, civilian triage, shelter allocation, and resource logistics.
 
-This repository is developed incrementally across 8 phases. **Phase 6** transforms the frontend into an emergency-operations **Disaster Command Center** with a rich 2D interactive tactical city map, real-time KPI overview, multi-factor triage filtering, live fleet telemetry, mission dispatch tracking, event timeline, and presentation-ready academic architecture breakdown.
+This repository is developed incrementally across 8 phases. **Phase 7** introduces an empirical, deterministic **Strategy Evaluation Engine** comparing the AI multi-factor triage rescue coordinator against a simple, naive baseline (greedy FIFO ordering by civilian ID) across identical disaster scenarios, initial states, and random seeds.
 
 ---
 
-## 1. Phase 6 Command Center Architecture & Capabilities
+## 1. Phase 7 Architecture & Strategy Evaluation Engine
 
 - **Heterogeneous Rescue Agents (`RescueAgent`, `AgentType`)**:
   - **Ground Responder (`ground_responder`)**: Emergency vehicle stationed at shelters operating on roads and open ground. Highly efficient on clear roadways, avoids deep floodwaters ($\ge 1.5$m) and heavy debris.
   - **Foot Responder (`foot_responder`)**: Search and rescue foot crew stationed at shelters capable of wading through shallow floodwaters ($< 1.0$m) to reach isolated residential sectors.
   - Movement semantics: 1 grid step per simulation tick, respecting exact terrain and hazard passability rules from `AStarPathfinder`.
-- **Deterministic Autonomous Dispatch Service (`RescueCoordinator`)**:
-  - Automatically queries the active civilian triage queue from `RescuePrioritizer` on every tick.
-  - Evaluates candidate available agents (`status == IDLE`).
-  - Assesses route feasibility and path cost using `AStarPathfinder.plan_route(...)`.
-  - Unreachable high-priority targets do **not** block reachable lower-priority victims; the dispatcher defers unreachable candidates and continues down the queue.
-  - Deterministic tie-breaking: minimum route travel cost, path length, and stable agent ID ascending.
-  - Excludes already assigned, in-transit, or rescued civilians from duplicate mission dispatch.
+- **Dual Dispatch Strategies (`DispatchStrategy`)**:
+  - **AI Strategy (`AI_TRIAGE`)**: Prioritizes civilians using a multi-factor score (vulnerability, injury acuity, health deterioration velocity, environmental hazard exposure, and waiting time). Evaluates nearest available idle agent via A* pathfinding. Distant or trapped high-acuity victims are actively triaged before low-risk victims.
+  - **Baseline Strategy (`BASELINE_FIFO`)**: A deliberately simple, naive benchmark. Selects the next eligible unrescued civilian using strict alphanumeric ordering by civilian ID (`c.id`), and assigns the closest available idle agent who can reach them via standard A* pathfinding. Does **not** incorporate triage priority, health urgency, or hazard proximity into civilian selection.
+  - **Fair Comparison Guarantee**: Both strategies share the identical simulation engine, city grid generation, flood diffusion, earthquake collapse rules, agent movement profiles, collision avoidance, and shelter capacity limits.
+- **Empirical Simulation Evaluator (`SimulationEvaluator`)**:
+  - Runs paired deterministic trials over identical seeds and scenarios (`earthquake_district`, `flash_flood_riverside`).
+  - Executes completely isolated engine copies in background memory without mutating or advancing the user's active dashboard simulation.
+  - Measures key emergency management dimensions:
+    - **Civilians Rescued**: Total survivors successfully evacuated to safe shelters.
+    - **Critical Civilians Rescued**: High-acuity victims saved before terminal health collapse.
+    - **Average Rescue Ticks**: Mean simulation steps required per completed extraction.
+    - **Mean Population Health**: Final percentage health across all surviving civilians.
+    - **Blocked / Failed Missions**: Instances where dynamic hazards severed all viable paths.
+    - **Rescue Velocity**: Percentage of available victims evacuated within the trial horizon.
 - **Full Mission Lifecycle & Evacuation Loop (`RescueMission`, `MissionStatus`)**:
   - `ASSIGNED` $\to$ `EN_ROUTE` $\to$ `RESCUING` $\to$ `TRANSPORTING` $\to$ `COMPLETED` (or `FAILED` / `CANCELLED`).
   - Arrival at civilian: civilian transitioned to `IN_TRANSIT` aboard the responder; responder transitioned to `TRANSPORTING`.
@@ -28,23 +35,11 @@ This repository is developed incrementally across 8 phases. **Phase 6** transfor
   - Destination shelter: determined by finding the closest reachable shelter with available capacity (`current_occupancy < capacity`).
   - Arrival at shelter: civilian status becomes `RESCUED`, shelter `current_occupancy += 1`, simulation `rescued_count += 1`, and agent `completed_rescues += 1`.
   - Agent returns to `IDLE` state at the shelter, ready for subsequent mission assignments.
-- **Collision Resolution & Dynamic Obstacle Replanning**:
-  - Deterministic right-of-way resolution: if multiple agents intend to enter the same non-shelter cell on the same tick, the agent with lower lexicographical ID proceeds while the other yields and waits 1 tick.
-  - Dynamic replanning: if advancing floodwater or seismic debris blocks the planned route ahead, the agent initiates an immediate A* replan. If an alternative route exists, the agent reroutes; if completely blocked, mission safely fails and target is released.
-- **Simulation Lifecyle & Consistency**:
-  - Strict tick order: Disasters Step $\to$ Civilians Deteriorate $\to$ Active Agents Advance / Evacuate $\to$ Idle Agents Dispatch $\to$ State Synchronized.
-  - Non-mutating GET endpoints: `/simulation/agents`, `/simulation/missions`, `/simulation/events` never advance ticks.
-  - Reset restores a clean initial fleet stationed at shelters with 0 missions and 0 completed rescues.
-- **Disaster Command Center Dashboard**:
-  - **Header & System Status (`Header`)**: Live simulation status pill (`RUNNING (Tick X)`, `PAUSED`, `STANDBY`), active disaster scenario name, API connectivity indicator, and manual sync action.
-  - **Academic AI Architecture Overview (`AiArchitectureIntro`)**: Collapsible 5 AI pillars breakdown (A* Pathfinding, Explainable Triage, Dynamic Disaster Modeling, Autonomous Multi-Agent Dispatch, Evacuation to Shelters) with explicit educational heuristic disclaimer.
-  - **Situation Overview KPI Cards (`SituationOverview`)**: 6 live mission metrics (Unrescued Civilians, Critical Priority, Active Missions, Available Units, Rescued Civilians, Blocked/Failed Missions).
-  - **Interactive City Map & Tactical Cell Inspector (`CityGridView`)**: Tactical 2D matrix rendering roads, buildings, open terrain, shelters (`⌂`), shallow/deep water, seismic debris, civilian status (`👤`, `🩹`, `⚠️`), ground vehicles (`🚑`), foot responders (`🏃`), patient aboard badges (`+👤`), status halos, active waypoints (`◦`), and an integrated side Inspector with live cell coordinates, terrain, hazard, resident entity vitals, and "Set as Start / Goal" routing buttons.
-  - **Autonomous Rescue Fleet (`RescueAgentPanel`)**: Live telemetry of responder units with filtering by status (`All`, `Busy`, `Idle`) and type (`🚑 Vehicles`, `🏃 Foot`), showing coordinates, operational status, target civilian, carrying patient, remaining waypoints, and completed rescues.
-  - **Mission Dispatch & Evacuation Control (`MissionControlPanel`)**: Fleet statistics ribbon, filterable mission registry (`All`, `Active`, `Rescued`, `Blocked`), destination waypoints, operational explanations, and click-to-inspect integration connecting missions to agents and civilians on the map.
-  - **Civilian Triage & Rescue Priority Queue (`RescuePriorityQueue`)**: Deterministic priority ranking with filter pills (Urgency: `Critical`, `High`, `Medium`, `Low`; Status: `Trapped`, `Injured`, `Waiting`), multi-criteria sorting (Rank, Triage Score, Critical HP, Longest Wait), instant search filter, expandable 6-part score breakdown, and click-to-highlight grid coordination.
-  - **Incident Event Timeline (`EventTimeline`)**: Reverse-chronological categorized event log (🏆 Evacuations, 🤝 Dispatch, ⚡ Extraction, 🔄 Replanning, ⚠️ Blockages) with simulation tick badges and text search filtering.
-  - **Controlled Simulation Lifecycle (`SimulationControls`)**: Scenario selection, seed input, safe sequential Auto-Play with configurable interval (1.0s, 1.5s, 2.0s), single-step tick (+1), pause/resume, and two-step inline reset confirmation popover.
+- **Disaster Command Center Dashboard & Evaluation Panel**:
+  - **Evaluation Suite (`StrategyEvaluationPanel`)**: Section 09 in the dashboard. Allows running 1 to 5 trials on demand across any scenario. Renders side-by-side KPI cards with net delta badges, a strategy definition breakdown, an automated analytical conclusion box, a multi-dimensional metric comparison matrix, and per-trial execution breakdowns.
+  - **Interactive City Map & Tactical Cell Inspector (`CityGridView`)**: Tactical 2D matrix rendering roads, buildings, open terrain, shelters (`⌂`), shallow/deep water, seismic debris, civilian status (`👤`, `🩹`, `⚠️`), ground vehicles (`🚑`), foot responders (`🏃`), patient aboard badges (`+👤`), status halos, active waypoints (`◦`), and an integrated side Inspector.
+  - **Autonomous Fleet Telemetry & Mission Control**: Live responder telemetry, filterable missions (`All`, `Active`, `Rescued`, `Blocked`), click-to-inspect tracking, and dynamic replanning.
+  - **Civilian Triage Queue & Event Timeline**: Real-time triage queue with urgency indicators, multi-criteria sorting, search, and a reverse-chronological event timeline.
 
 ---
 
@@ -76,24 +71,26 @@ RESQ-AI/
 │   │   │       │   ├── config.py
 │   │   │       │   ├── health.py
 │   │   │       │   ├── info.py
-│   │   │       │   └── simulation.py        # Agents, Missions, Events & Lifecycle
+│   │   │       │   └── simulation.py        # Lifecycle, Agents, Missions, Events & Evaluation
 │   │   │       └── router.py
 │   │   ├── core/
-│   │   │   └── config.py                    # Version 0.5.0 & Phase 5 configuration
+│   │   │   └── config.py                    # Version 0.7.0 & Phase 7 configuration
 │   │   ├── schemas/
 │   │   │   ├── agent.py                     # RescueAgent, RescueMission, DispatchSummary
 │   │   │   ├── environment.py               # CityGrid, GridCell, CivilianStatus (IN_TRANSIT)
+│   │   │   ├── evaluation.py                # DispatchStrategy, StrategyMetrics, EvaluationResponse
 │   │   │   ├── prioritization.py            # TriageItem, TriageSummary, PrioritiesResponse
 │   │   │   ├── route.py                     # RouteRequest, RouteResponse, MovementProfile
 │   │   │   └── simulation.py                # SimulationState, TickResult, ScenarioInfo
 │   │   ├── services/
-│   │   │   ├── simulation_service.py        # Service orchestrator
+│   │   │   ├── simulation_service.py        # Service orchestrator (includes evaluate)
 │   │   │   └── simulation/
 │   │   │       ├── civilian_model.py        # Deterioration model (protects IN_TRANSIT)
-│   │   │       ├── dispatcher.py            # Phase 5 Autonomous RescueCoordinator
+│   │   │       ├── dispatcher.py            # AI Triage & Naive Baseline FIFO Dispatchers
 │   │   │       ├── earthquake_model.py      # Seismic collapse & aftershocks
 │   │   │       ├── engine.py                # SimulationEngine with fleet coordination
-│   │   │       ├── flood_model.py           # Fluid diffusion & runoff model
+│   │   │       ├── evaluator.py             # Isolated deterministic Strategy Evaluator
+│   │   │       ├── flood_model.py           # Fluid diffusion & shelter floodwall model
 │   │   │       ├── grid_generator.py        # Procedural synthetic city builder
 │   │   │       ├── pathfinding.py           # A* Pathfinding engine & heuristic
 │   │   │       ├── prioritization.py        # Multi-factor rescue prioritizer
@@ -101,12 +98,13 @@ RESQ-AI/
 │   │   └── main.py
 │   └── tests/
 │       ├── conftest.py
-│       ├── test_agents.py                   # Agent schemas & fleet generation tests
-│       ├── test_agents_api.py               # End-to-end API integration tests
+│       ├── test_agents.py
+│       ├── test_agents_api.py
 │       ├── test_civilian_deterioration.py
 │       ├── test_config.py
-│       ├── test_dispatcher.py               # Autonomous movement, evacuation & replanning
+│       ├── test_dispatcher.py
 │       ├── test_earthquake_model.py
+│       ├── test_evaluation.py               # Baseline dispatch, metrics, determinism & isolation
 │       ├── test_flood_model.py
 │       ├── test_grid_generator.py
 │       ├── test_health.py
@@ -118,27 +116,28 @@ RESQ-AI/
 │       ├── test_schemas.py
 │       ├── test_simulation.py
 │       ├── test_simulation_api.py
-│       └── test_simulation_engine.py        # Multi-tick determinism & pause/reset tests
+│       └── test_simulation_engine.py
 ├── frontend/
 │   ├── app/
 │   │   ├── layout.tsx
-│   │   └── page.tsx                         # Mission Control Dashboard
+│   │   └── page.tsx                         # Mission Control Dashboard with Evaluation Section
 │   ├── components/
 │   │   ├── CityGridView.tsx                 # 2D Grid with Agents, Civilians, & Routes
 │   │   ├── ConfigCard.tsx
 │   │   ├── ConnectionBanner.tsx
 │   │   ├── Header.tsx
-│   │   ├── MissionControlPanel.tsx          # Phase 5 Mission Dispatch & Evacuation Control
+│   │   ├── MissionControlPanel.tsx          # Mission Dispatch & Evacuation Control
 │   │   ├── ProjectStatusCard.tsx
-│   │   ├── RescueAgentPanel.tsx             # Phase 5 Autonomous Fleet Telemetry
-│   │   ├── RescuePriorityQueue.tsx          # Phase 4 Rescue Priority Queue & Triage
-│   │   ├── RoutePlanner.tsx                 # Phase 3 A* Route Planner Controls
+│   │   ├── RescueAgentPanel.tsx             # Autonomous Fleet Telemetry
+│   │   ├── RescuePriorityQueue.tsx          # Rescue Priority Queue & Triage Breakdown
+│   │   ├── RoutePlanner.tsx                 # A* Route Planner Controls
 │   │   ├── SimulationControls.tsx
-│   │   └── SimulationStateCard.tsx
+│   │   ├── SimulationStateCard.tsx
+│   │   └── StrategyEvaluationPanel.tsx      # Phase 7 AI vs Baseline Evaluation Suite
 │   ├── lib/
-│   │   └── api.ts                           # Typed HTTP client with Agents & Missions APIs
+│   │   └── api.ts                           # Typed HTTP client with Evaluation APIs
 │   └── types/
-│       └── api.ts                           # TypeScript schema mirrors
+│       └── api.ts                           # TypeScript evaluation schemas
 ├── docs/
 │   ├── api-contract.md
 │   └── architecture.md
@@ -196,7 +195,7 @@ From the project root:
 ```powershell
 .\backend\.venv\Scripts\pytest.exe backend/tests -v
 ```
-*(All 99 tests pass with 100% success across agent schemas, autonomous dispatch, path execution, civilian extraction, shelter evacuation, collision avoidance, dynamic replanning, and simulation determinism).*
+*(All 105 tests pass with 100% success across baseline strategy, evaluation metrics, determinism, isolation, agent schemas, autonomous dispatch, path execution, civilian extraction, shelter evacuation, collision avoidance, dynamic replanning, and simulation engine).*
 
 ### Frontend Verification
 From `frontend/`:
@@ -204,7 +203,7 @@ From `frontend/`:
 npm run lint
 npm run build
 ```
-*(Zero ESLint warnings or errors; production build compiles cleanly).*
+*(Zero ESLint warnings or errors; production build compiles cleanly with Next.js 16 App Router).*
 
 ---
 
@@ -264,18 +263,34 @@ $missions = (Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/mis
 $missions | Select-Object id, agent_id, civilian_id, status, completed_at_tick, explanation | Format-Table
 ```
 
-### 7. Inspect Event Logs
+### 7. Run AI vs Baseline Evaluation Benchmark (Phase 7)
 ```powershell
-$events = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/events"
-$events.events | Select-Object -Last 10
+$evalPayload = @{
+    scenario_id = "earthquake_district"
+    trials = 3
+    max_ticks = 40
+    seed = 42
+} | ConvertTo-Json
+
+$evalResult = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/evaluate" -Method Post -ContentType "application/json" -Body $evalPayload
+Write-Host "Evaluation Complete!"
+Write-Host "Scenarios evaluated:" $evalResult.scenario_name "Trials:" $evalResult.trials
+Write-Host "AI Rescued:" $evalResult.ai_strategy.avg_civilians_rescued "Baseline Rescued:" $evalResult.baseline_strategy.avg_civilians_rescued
+Write-Host "AI Critical Rescued:" $evalResult.ai_strategy.avg_critical_rescued "Baseline Critical Rescued:" $evalResult.baseline_strategy.avg_critical_rescued
+Write-Host "AI Avg Health:" $evalResult.ai_strategy.avg_population_health "% Baseline Avg Health:" $evalResult.baseline_strategy.avg_population_health "%"
+Write-Host "Conclusion:" $evalResult.analytical_conclusion
 ```
 
-### 8. Reset and Verify Clean Initial State
+### 8. Fetch Cached Latest Evaluation
+```powershell
+$latest = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/evaluate/latest"
+Write-Host "Cached run completed at:" $latest.completed_at
+```
+
+### 9. Reset and Verify Active State Untouched by Evaluation
 ```powershell
 $reset = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/reset" -Method Post
 Write-Host "Reset tick:" $reset.current_tick "rescued_count:" $reset.rescued_count
-$missionsAfter = (Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/missions").missions
-Write-Host "Active/historical missions after reset:" $missionsAfter.Count
 ```
 
 ---
@@ -288,6 +303,4 @@ Write-Host "Active/historical missions after reset:" $missionsAfter.Count
 ---
 
 ## 8. Planned Future Phases
-- **Phase 6**: Decentralized Task Allocation & Market-Based Auction Mechanisms.
-- **Phase 7**: Shelters, Depots & Resource Logistics (Fuel, Medical Supplies, Battery/Kit replenishment).
 - **Phase 8**: Real-time Analytics, Simulation Replay Controller, and Survival Metrics.

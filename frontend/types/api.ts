@@ -275,3 +275,71 @@ export interface ApiError {
   details?: unknown;
 }
 
+export type DispatchStrategy = "ai_triage" | "baseline_fifo";
+
+export interface StrategyMetrics {
+  strategy: DispatchStrategy;
+  strategy_name: string;
+  description: string;
+  civilians_rescued: number;
+  civilians_unrescued: number;
+  critical_rescued: number;
+  critical_unrescued: number;
+  average_rescue_tick: number | null;
+  average_final_health: number;
+  failed_missions: number;
+  total_ticks: number;
+  tick_cumulative_rescues: number[];
+}
+
+export interface EvaluationTrialResult {
+  scenario_id: string;
+  scenario_name: string;
+  seed: number;
+  max_ticks: number;
+  ai_metrics: StrategyMetrics;
+  baseline_metrics: StrategyMetrics;
+}
+
+export interface EvaluationSummaryMetrics {
+  total_rescued: number;
+  total_unrescued: number;
+  critical_rescued: number;
+  critical_unrescued: number;
+  avg_rescue_tick: number | null;
+  avg_final_health: number;
+  failed_missions: number;
+}
+
+export interface EvaluationDelta {
+  rescued_diff: number;
+  critical_rescued_diff: number;
+  avg_rescue_tick_diff: number | null;
+  avg_final_health_diff: number;
+  failed_missions_diff: number;
+}
+
+export interface EvaluationSummary {
+  ai_summary: EvaluationSummaryMetrics;
+  baseline_summary: EvaluationSummaryMetrics;
+  delta: EvaluationDelta;
+  analytical_conclusion: string;
+}
+
+export interface EvaluationRequest {
+  scenario_id?: string | null;
+  seeds?: number[];
+  max_ticks?: number;
+}
+
+export interface EvaluationResponse {
+  benchmark_id: string;
+  timestamp: string;
+  scenarios_evaluated: string[];
+  trials_count: number;
+  max_ticks: number;
+  summary: EvaluationSummary;
+  trials: EvaluationTrialResult[];
+}
+
+

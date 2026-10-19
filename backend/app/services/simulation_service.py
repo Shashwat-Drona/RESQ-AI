@@ -14,8 +14,10 @@ from app.schemas.simulation import (
     StartSimulationRequest,
     TickResult,
 )
+from app.schemas.evaluation import EvaluationRequest, EvaluationResponse
 from app.services.simulation.dispatcher import RescueCoordinator
 from app.services.simulation.engine import SimulationEngine
+from app.services.simulation.evaluator import SimulationEvaluator
 from app.services.simulation.pathfinding import AStarPathfinder
 from app.services.simulation.prioritization import RescuePrioritizer
 from app.services.simulation.scenarios import get_all_scenarios
@@ -190,4 +192,20 @@ class SimulationService:
             current_tick=cls._engine.current_tick if cls._engine.is_active() else 0,
             events=events,
         )
+
+    @classmethod
+    def evaluate(cls, request: EvaluationRequest) -> EvaluationResponse:
+        """Run isolated comparative benchmark evaluation between AI Triage and Baseline FIFO.
+        
+        Guarantees:
+        - Executes in separate, isolated SimulationEngine instances.
+        - Does NOT advance, corrupt, or modify the active user simulation session.
+        """
+        return SimulationEvaluator.evaluate(request)
+
+    @classmethod
+    def get_latest_evaluation(cls) -> Optional[EvaluationResponse]:
+        """Retrieve the most recent benchmark evaluation report."""
+        return SimulationEvaluator.get_latest_evaluation()
+
 

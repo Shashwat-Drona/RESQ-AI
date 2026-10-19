@@ -20,6 +20,7 @@ from app.schemas.simulation import (
     TickResult,
 )
 from app.schemas.agent import AgentStatus, RescueAgent, RescueMission
+from app.schemas.evaluation import DispatchStrategy
 from app.services.simulation.civilian_model import CivilianDeteriorationModel
 from app.services.simulation.dispatcher import RescueCoordinator
 from app.services.simulation.earthquake_model import EarthquakeSimulationModel
@@ -42,8 +43,9 @@ class SimulationNotRunningError(Exception):
 class SimulationEngine:
     """Independent simulation engine orchestrating grid, disasters, civilians, and lifecycle."""
 
-    def __init__(self):
+    def __init__(self, dispatch_strategy: DispatchStrategy = DispatchStrategy.AI_TRIAGE):
         """Initialize simulation engine in idle standby state."""
+        self.dispatch_strategy: DispatchStrategy = dispatch_strategy
         self.status: SimulationStatus = SimulationStatus.NOT_STARTED
         self.current_tick: int = 0
         self.config: SimulationConfig = SimulationConfig()
@@ -266,6 +268,7 @@ class SimulationEngine:
                 grid=self.grid,
                 current_tick=self.current_tick,
                 missions=self.missions,
+                strategy=self.dispatch_strategy,
             )
             tick_events.extend(dispatch_events)
 
