@@ -6,16 +6,19 @@ import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { ProjectStatusCard } from "@/components/ProjectStatusCard";
 import { SimulationStateCard } from "@/components/SimulationStateCard";
 import { ConfigCard } from "@/components/ConfigCard";
+import { SimulationControls } from "@/components/SimulationControls";
 import {
   API_BASE_URL,
   getAppInfo,
   getDefaultConfig,
   getHealth,
+  getScenarios,
   getSimulationState,
 } from "@/lib/api";
 import {
   AppInfoResponse,
   HealthResponse,
+  ScenarioInfo,
   SimulationConfig,
   SimulationState,
 } from "@/types/api";
@@ -26,6 +29,7 @@ export default function HomePage() {
   const [config, setConfig] = useState<SimulationConfig | null>(null);
   const [simulationState, setSimulationState] =
     useState<SimulationState | null>(null);
+  const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,15 +43,17 @@ export default function HomePage() {
       const healthData = await getHealth();
       setHealth(healthData);
 
-      const [infoData, configData, stateData] = await Promise.all([
+      const [infoData, configData, stateData, scenariosData] = await Promise.all([
         getAppInfo(),
         getDefaultConfig(),
         getSimulationState(),
+        getScenarios().catch(() => []),
       ]);
 
       setAppInfo(infoData);
       setConfig(configData);
       setSimulationState(stateData);
+      setScenarios(scenariosData);
       setLastChecked(new Date());
     } catch (err: unknown) {
       const msg =
@@ -70,16 +76,18 @@ export default function HomePage() {
         if (ignore) return;
         setHealth(healthData);
 
-        const [infoData, configData, stateData] = await Promise.all([
+        const [infoData, configData, stateData, scenariosData] = await Promise.all([
           getAppInfo(),
           getDefaultConfig(),
           getSimulationState(),
+          getScenarios().catch(() => []),
         ]);
         if (ignore) return;
 
         setAppInfo(infoData);
         setConfig(configData);
         setSimulationState(stateData);
+        setScenarios(scenariosData);
         setLastChecked(new Date());
       } catch (err: unknown) {
         if (ignore) return;
@@ -110,7 +118,7 @@ export default function HomePage() {
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase={appInfo?.phase || "Phase 1: Project Foundation & Architecture"}
+        phase={appInfo?.phase || "Phase 2: Disaster Environment & Simulation Engine"}
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -127,7 +135,18 @@ export default function HomePage() {
           isLoading={isLoading}
         />
 
-        {/* Phase 1 Dashboard Grid */}
+        {/* Phase 2 Interactive Controls */}
+        <SimulationControls
+          scenarios={scenarios}
+          simulationState={simulationState}
+          onStateUpdate={(st) => {
+            setSimulationState(st);
+            setLastChecked(new Date());
+          }}
+          isLoading={isLoading}
+        />
+
+        {/* Dashboard Telemetry Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ProjectStatusCard info={appInfo} isLoading={isLoading} />
           <SimulationStateCard state={simulationState} isLoading={isLoading} />
@@ -139,10 +158,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
               <h3 className="text-sm font-semibold text-slate-200">
-                Phase 1 Foundation Architecture &amp; Data Pipeline
+                Phase 2 Disaster Engine &amp; API Pipeline
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Verified end-to-end communication between Next.js client and FastAPI server.
+                Deterministic 2D synthetic city environment with flood propagation, earthquake debris, and lifecycle controls.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -153,35 +172,35 @@ export default function HomePage() {
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">HEALTH ENDPOINT</div>
+              <div className="text-slate-400 text-[10px]">SCENARIOS CATALOG</div>
+              <div className="text-cyan-400 font-semibold mt-1">
+                GET /api/v1/simulation/scenarios
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Built-in templates</div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div className="text-slate-400 text-[10px]">SCENARIO INITIALIZATION</div>
               <div className="text-emerald-400 font-semibold mt-1">
-                GET /api/health
+                POST /api/v1/simulation/start
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">Status check &amp; ping</div>
+              <div className="text-[10px] text-slate-400 mt-1">Seeded environment</div>
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">INFO CONTRACT</div>
+              <div className="text-slate-400 text-[10px]">TICK DISPATCHER</div>
               <div className="text-blue-400 font-semibold mt-1">
-                GET /api/v1/info
+                POST /api/v1/simulation/tick
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">Application metadata</div>
+              <div className="text-[10px] text-slate-400 mt-1">Step disaster (+1)</div>
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">CONFIG CONTRACT</div>
-              <div className="text-purple-400 font-semibold mt-1">
-                GET /api/v1/config
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Default 20x20 parameters</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">STATE CONTRACT</div>
+              <div className="text-slate-400 text-[10px]">STATE TELEMETRY</div>
               <div className="text-amber-400 font-semibold mt-1">
                 GET /api/v1/simulation/state
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">Initial standby state</div>
+              <div className="text-[10px] text-slate-400 mt-1">Grid, civs, shelters</div>
             </div>
           </div>
         </section>
@@ -191,7 +210,7 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            RESQ-AI © 2026 — Disaster Response Simulator. Phase 1 Foundation.
+            RESQ-AI © 2026 — Disaster Response Simulator. Phase 2: Disaster Environment &amp; Simulation Engine.
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>API: {API_BASE_URL}</span>

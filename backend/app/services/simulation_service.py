@@ -1,16 +1,36 @@
-"""Simulation service providing configuration management and state factory."""
+"""Simulation service providing singleton engine orchestration and lifecycle management."""
 
+from typing import List, Optional
 from app.core.config import settings
 from app.schemas.simulation import (
     DisasterType,
+    ScenarioInfo,
     SimulationConfig,
     SimulationState,
     SimulationStatus,
+    StartSimulationRequest,
+    TickResult,
 )
+from app.services.simulation.engine import SimulationEngine
+from app.services.simulation.scenarios import get_all_scenarios
 
 
 class SimulationService:
-    """Manages baseline simulation configuration and initial state generation."""
+    """Manages baseline simulation configuration and the active SimulationEngine instance."""
+
+    # Active session instance for local development
+    _engine: SimulationEngine = SimulationEngine()
+
+    @classmethod
+    def get_engine(cls) -> SimulationEngine:
+        """Access the active SimulationEngine instance."""
+        return cls._engine
+
+    @classmethod
+    def reset_engine(cls) -> SimulationEngine:
+        """Reset the singleton engine for test isolation or fresh session."""
+        cls._engine = SimulationEngine()
+        return cls._engine
 
     @staticmethod
     def get_default_config() -> SimulationConfig:
@@ -28,12 +48,16 @@ class SimulationService:
             tick_interval_seconds=settings.default_tick_interval_seconds,
         )
 
-    @staticmethod
-    def get_initial_state(config: SimulationConfig | None = None) -> SimulationState:
-        """Generate a valid initial simulation state with status 'not_started'.
+    @classmethod
+    def get_initial_state(cls, config: SimulationConfig | None = None) -> SimulationState:
+        """Generate simulation state.
         
-        Does not fabricate active rescue operations or fake telemetry.
+        If an active simulation scenario is running or paused, returns its true telemetry.
+        Otherwise returns a clean initial state with status 'not_started'.
         """
+        if cls._engine.is_active():
+            return cls._engine.get_state()
+
         active_config = config or SimulationService.get_default_config()
         return SimulationState(
             status=SimulationStatus.NOT_STARTED,
@@ -44,3 +68,33 @@ class SimulationService:
             rescued_count=0,
             message="Simulation engine initialized in standby. No active simulation session is running.",
         )
+
+    @staticmethod
+    def get_scenarios() -> List[ScenarioInfo]:
+        """Return all built-in scenario templates."""
+        return get_all_scenarios()
+
+    @classmethod
+    def start_simulation(cls, request: StartSimulationRequest) -> SimulationState:
+        """Initialize and start a scenario on the active engine."""
+        return cls._engine.start(request)
+
+    @classmethod
+    def step_tick(cls) -> TickResult:
+        """Advance the active simulation by one tick."""
+        return cls._engine.step()
+
+    @classmethod
+    def pause_simulation(cls) -> SimulationState:
+        """Pause active simulation."""
+        return cls._engine.pause()
+
+    @classmethod
+    def resume_simulation(cls) -> SimulationState:
+        """Resume paused simulation."""
+        return cls._engine.resume()
+
+    @classmethod
+    def reset_simulation(cls) -> SimulationState:
+        """Reset active scenario back to initial tick 0 state."""
+        return cls._engine.reset()

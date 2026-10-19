@@ -60,23 +60,38 @@ export function SimulationStateCard({
             </div>
           </div>
           <div className="p-2.5 rounded bg-slate-950/60 border border-slate-800">
-            <div className="text-[10px] text-slate-400">AGENTS</div>
+            <div className="text-[10px] text-slate-400">CIVILIANS</div>
             <div className="text-sm font-bold text-slate-400 mt-1">
-              {state?.active_agents ?? 0}
+              {state?.civilians?.length ?? 0}
             </div>
           </div>
           <div className="p-2.5 rounded bg-slate-950/60 border border-slate-800">
-            <div className="text-[10px] text-slate-400">RESCUED</div>
+            <div className="text-[10px] text-slate-400">SHELTERS</div>
             <div className="text-sm font-bold text-slate-400 mt-1">
-              {state?.rescued_count ?? 0}
+              {state?.shelters?.length ?? 0}
             </div>
           </div>
         </div>
+
+        {/* Phase 2 Scenario / Events preview */}
+        {state?.scenario_id && (
+          <div className="mt-3 text-[11px] text-slate-400 font-mono bg-slate-950/50 p-2 rounded border border-slate-800">
+            <span className="text-slate-500">Scenario:</span>{" "}
+            <span className="text-emerald-400 font-semibold">{state.scenario_id}</span>
+            {state.tick_events && state.tick_events.length > 0 && (
+              <div className="mt-1 text-slate-300 truncate">
+                {state.tick_events[state.tick_events.length - 1]}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 pt-4 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-        <span>Active Disaster Engine:</span>
-        <span className="font-mono text-slate-300">Phase 2 Activation</span>
+        <span>Disaster Engine:</span>
+        <span className="font-mono text-emerald-400">
+          {state?.status === "not_started" ? "Standby" : `${state?.config?.disaster_type?.toUpperCase()} ACTIVE`}
+        </span>
       </div>
     </div>
   );

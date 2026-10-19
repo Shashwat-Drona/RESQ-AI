@@ -7,8 +7,11 @@
 import {
   AppInfoResponse,
   HealthResponse,
+  ScenarioInfo,
   SimulationConfig,
   SimulationState,
+  StartSimulationRequest,
+  TickResult,
 } from "@/types/api";
 
 export const API_BASE_URL =
@@ -106,5 +109,60 @@ export async function validateConfig(
   return request<SimulationConfig>("/api/v1/config/validate", {
     method: "POST",
     body: JSON.stringify(config),
+  });
+}
+
+/**
+ * Fetch available built-in scenario templates.
+ */
+export async function getScenarios(): Promise<ScenarioInfo[]> {
+  return request<ScenarioInfo[]>("/api/v1/simulation/scenarios");
+}
+
+/**
+ * Initialize and start a disaster simulation scenario.
+ */
+export async function startSimulation(
+  payload: StartSimulationRequest
+): Promise<SimulationState> {
+  return request<SimulationState>("/api/v1/simulation/start", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+/**
+ * Advance simulation by one tick step.
+ */
+export async function stepTick(): Promise<TickResult> {
+  return request<TickResult>("/api/v1/simulation/tick", {
+    method: "POST",
+  });
+}
+
+/**
+ * Pause active simulation.
+ */
+export async function pauseSimulation(): Promise<SimulationState> {
+  return request<SimulationState>("/api/v1/simulation/pause", {
+    method: "POST",
+  });
+}
+
+/**
+ * Resume paused simulation.
+ */
+export async function resumeSimulation(): Promise<SimulationState> {
+  return request<SimulationState>("/api/v1/simulation/resume", {
+    method: "POST",
+  });
+}
+
+/**
+ * Reset simulation back to initial tick 0 state.
+ */
+export async function resetSimulation(): Promise<SimulationState> {
+  return request<SimulationState>("/api/v1/simulation/reset", {
+    method: "POST",
   });
 }

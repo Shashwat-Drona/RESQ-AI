@@ -1,9 +1,11 @@
-"""Initial simulation data contracts and Pydantic models."""
+"""Simulation data contracts and Pydantic models for Phase 2."""
 
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
+
+from app.schemas.environment import CityGrid, Civilian, Coordinate, Shelter
 
 
 class DisasterType(str, Enum):
@@ -20,13 +22,6 @@ class SimulationStatus(str, Enum):
     RUNNING = "running"
     PAUSED = "paused"
     COMPLETED = "completed"
-
-
-class Coordinate(BaseModel):
-    """Grid position in the simulation map (row, column)."""
-
-    row: int = Field(..., ge=0, description="Zero-indexed row coordinate")
-    col: int = Field(..., ge=0, description="Zero-indexed column coordinate")
 
 
 class SimulationConfig(BaseModel):
@@ -60,6 +55,14 @@ class SimulationConfig(BaseModel):
         le=30.0,
         description="Duration of each simulation step in seconds",
     )
+    seed: Optional[int] = Field(
+        default=42,
+        description="Random seed for deterministic city and disaster generation",
+    )
+    scenario_id: Optional[str] = Field(
+        default=None,
+        description="Identifier of pre-configured scenario template",
+    )
 
     @field_validator("grid_rows", "grid_cols")
     @classmethod
@@ -72,8 +75,8 @@ class SimulationConfig(BaseModel):
 class SimulationState(BaseModel):
     """Current state of the simulation engine.
     
-    Represents initial or active state cleanly. In Phase 1, status is 'not_started'
-    and lists of agents, incidents, and blocked roads remain empty.
+    Includes full environmental telemetry, cell grid, disaster conditions,
+    civilians, shelters, and lifecycle indicators.
     """
 
     status: SimulationStatus = Field(
@@ -92,7 +95,7 @@ class SimulationState(BaseModel):
     active_incidents: int = Field(
         default=0,
         ge=0,
-        description="Number of unresolved emergency incidents (0 in initial state)",
+        description="Number of unresolved emergency incidents / affected civilians",
     )
     active_agents: int = Field(
         default=0,
@@ -112,9 +115,29 @@ class SimulationState(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp of the state capture",
     )
+    grid: Optional[CityGrid] = Field(
+        default=None,
+        description="2D city environment grid with terrain and hazard conditions",
+    )
+    civilians: List[Civilian] = Field(
+        default_factory=list,
+        description="List of civilians distributed across the city",
+    )
+    shelters: List[Shelter] = Field(
+        default_factory=list,
+        description="List of emergency evacuation shelters",
+    )
+    scenario_id: Optional[str] = Field(
+        default=None,
+        description="Current active scenario identifier",
+    )
+    tick_events: List[str] = Field(
+        default_factory=list,
+        description="Operational log events generated during the most recent tick",
+    )
     metadata: Dict[str, Any] = Field(
         default_factory=lambda: {
-            "phase": 1,
+            "phase": 2,
             "engine_mode": "idle",
             "future_features": [
                 "pathfinding",
@@ -125,3 +148,66 @@ class SimulationState(BaseModel):
         },
         description="Extensible metadata for future phase enhancements",
     )
+
+
+class StartSimulationRequest(BaseModel):
+    """Parameters to initialize or restart a disaster simulation scenario."""
+
+    scenario_id: Optional[str] = Field(
+        default=None,
+        description="ID of built-in scenario (e.g., 'flooded_neighborhood', 'earthquake_district')",
+    )
+    disaster_type: Optional[DisasterType] = Field(
+        default=None,
+        description="Disaster type if overriding template or creating custom scenario",
+    )
+    seed: Optional[int] = Field(
+        default=42,
+        description="Random seed for deterministic procedural generation",
+    )
+    grid_rows: Optional[int] = Field(
+        default=None,
+        ge=5,
+        le=100,
+        description="Optional override for grid rows",
+    )
+    grid_cols: Optional[int] = Field(
+        default=None,
+        ge=5,
+        le=100,
+        description="Optional override for grid columns",
+    )
+    max_agents: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=50,
+        description="Optional override for max responders",
+    )
+    num_civilians: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=100,
+        description="Optional override for civilian incident count",
+    )
+
+
+class ScenarioInfo(BaseModel):
+    """Description of a pre-configured disaster scenario template."""
+
+    id: str = Field(..., description="Unique scenario identifier")
+    name: str = Field(..., description="Human-readable scenario title")
+    description: str = Field(..., description="Scenario background narrative")
+    disaster_type: DisasterType = Field(..., description="Primary disaster type")
+    default_seed: int = Field(..., description="Reference random seed for reproducibility")
+    recommended_rows: int = Field(..., description="Default grid row dimension")
+    recommended_cols: int = Field(..., description="Default grid column dimension")
+    civilian_count: int = Field(..., description="Standard civilian count placed in scenario")
+
+
+class TickResult(BaseModel):
+    """Response returned upon completing a single simulation tick step."""
+
+    current_tick: int = Field(..., description="New advanced tick count")
+    status: SimulationStatus = Field(..., description="Simulation status after tick")
+    events: List[str] = Field(default_factory=list, description="Narrative events that occurred")
+    state: SimulationState = Field(..., description="Updated complete simulation state")
