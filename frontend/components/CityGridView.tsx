@@ -8,6 +8,7 @@ interface CityGridViewProps {
   route: RouteResponse | null;
   startCoord: Coordinate | null;
   goalCoord: Coordinate | null;
+  highlightCoord?: Coordinate | null;
   onSetStart: (coord: Coordinate) => void;
   onSetGoal: (coord: Coordinate) => void;
 }
@@ -17,6 +18,7 @@ export function CityGridView({
   route,
   startCoord,
   goalCoord,
+  highlightCoord,
   onSetStart,
   onSetGoal,
 }: CityGridViewProps) {
@@ -138,6 +140,9 @@ export function CityGridView({
                 content = "✕";
               }
 
+              const isHighlighted =
+                highlightCoord?.row === r && highlightCoord?.col === c;
+
               // Path Highlight Overlay
               if (start) {
                 bgColor = "bg-emerald-500";
@@ -151,6 +156,9 @@ export function CityGridView({
                 bgColor = "bg-amber-400 text-slate-950";
                 borderClass = "border-amber-200 ring-1 ring-amber-300";
                 content = "•";
+              } else if (isHighlighted) {
+                borderClass = "border-purple-400 ring-2 ring-purple-400 ring-offset-1 ring-offset-slate-950";
+                content = "👤";
               }
 
               return (
@@ -217,6 +225,10 @@ export function CityGridView({
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-sm bg-amber-400 border border-white text-slate-950 text-[8px] font-bold text-center leading-3">•</span>
             <span>A* Route Path</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-slate-900 border border-purple-400 text-[8px] text-center leading-3">👤</span>
+            <span>Civilian</span>
           </div>
         </div>
 

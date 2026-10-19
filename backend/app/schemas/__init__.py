@@ -12,6 +12,12 @@ from app.schemas.environment import (
 )
 from app.schemas.health import HealthResponse
 from app.schemas.info import AppInfoResponse
+from app.schemas.prioritization import (
+    PrioritiesResponse,
+    ScoreBreakdown,
+    TriageItem,
+    TriageSummary,
+)
 from app.schemas.route import (
     MovementProfile,
     RouteRequest,
@@ -50,4 +56,8 @@ __all__ = [
     "MovementProfile",
     "RouteRequest",
     "RouteResponse",
+    "ScoreBreakdown",
+    "TriageItem",
+    "TriageSummary",
+    "PrioritiesResponse",
 ]

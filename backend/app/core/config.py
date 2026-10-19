@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     """Central application settings loaded from environment or defaults."""
 
     app_name: str = "RESQ-AI"
-    app_version: str = "0.3.0"
-    phase: str = "Phase 3: A* Pathfinding & Dynamic Route Planning"
+    app_version: str = "0.4.0"
+    phase: str = "Phase 4: Intelligent Rescue Prioritization & Civilian Triage"
     description: str = (
         "AI-Powered Disaster Response & Rescue Simulator - Multi-agent emergency operations platform."
     )

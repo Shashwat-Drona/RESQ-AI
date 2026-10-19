@@ -59,7 +59,53 @@ export interface Civilian {
   status: CivilianStatus;
   urgency: UrgencyLevel;
   health: number;
+  waiting_ticks?: number;
   metadata?: Record<string, unknown>;
+}
+
+export interface ScoreBreakdown {
+  urgency_score: number;
+  health_score: number;
+  trapped_score: number;
+  hazard_score: number;
+  injured_score: number;
+  waiting_score: number;
+}
+
+export interface TriageItem {
+  rank: number;
+  civilian_id: string;
+  coordinate: Coordinate;
+  status: CivilianStatus;
+  urgency: UrgencyLevel;
+  health: number;
+  waiting_ticks: number;
+  priority_score: number;
+  hazard_state: HazardState;
+  water_level: number;
+  debris_severity: number;
+  explanation: string;
+  score_breakdown: ScoreBreakdown;
+}
+
+export interface TriageSummary {
+  total_civilians: number;
+  active_unrescued: number;
+  rescued_count: number;
+  critical_count: number;
+  high_count: number;
+  medium_count: number;
+  low_count: number;
+  trapped_count: number;
+  injured_count: number;
+}
+
+export interface PrioritiesResponse {
+  current_tick: number;
+  queue: TriageItem[];
+  summary: TriageSummary;
+  is_heuristic: boolean;
+  methodology: string;
 }
 
 export interface Shelter {

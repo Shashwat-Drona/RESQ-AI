@@ -92,6 +92,11 @@ class Civilian(BaseModel):
         description="Triage priority category",
     )
     health: int = Field(default=100, ge=0, le=100, description="Health percentage (0-100)")
+    waiting_ticks: int = Field(
+        default=0,
+        ge=0,
+        description="Number of elapsed simulation ticks spent awaiting rescue",
+    )
     metadata: Dict[str, Any] = Field(
         default_factory=dict,
         description="Extensible metadata for future medical/agent phases",

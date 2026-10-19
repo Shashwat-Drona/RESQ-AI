@@ -331,3 +331,84 @@ Returned when coordinates are outside the grid dimensions or coordinates fail sc
 }
 ```
 
+---
+
+## 5. Phase 4: Intelligent Rescue Prioritization & Civilian Triage
+
+### `GET /api/v1/simulation/priorities`
+Evaluates and returns the ranked active rescue queue and aggregate triage summary across all civilians in the active simulation. Incorporates urgency level, health deficit, trapped/injured status, active cell hazard exposure, and waiting time. Non-mutating read-only endpoint.
+
+#### Success Response (`200 OK`)
+```json
+{
+  "current_tick": 2,
+  "queue": [
+    {
+      "rank": 1,
+      "civilian_id": "civ_3",
+      "coordinate": { "row": 0, "col": 0 },
+      "status": "trapped",
+      "urgency": "critical",
+      "health": 18,
+      "waiting_ticks": 2,
+      "priority_score": 96.6,
+      "hazard_state": "dangerous",
+      "water_level": 2.1,
+      "debris_severity": 0.0,
+      "explanation": "Critical triage priority; Trapped by physical hazards; Exposed to deep water danger (2.1m); Severe health depletion (18%); Awaiting evacuation (2 ticks).",
+      "score_breakdown": {
+        "urgency_score": 40.0,
+        "health_score": 24.6,
+        "trapped_score": 15.0,
+        "hazard_score": 15.0,
+        "injured_score": 0.0,
+        "waiting_score": 2.0
+      }
+    },
+    {
+      "rank": 2,
+      "civilian_id": "civ_1",
+      "coordinate": { "row": 4, "col": 4 },
+      "status": "injured",
+      "urgency": "high",
+      "health": 65,
+      "waiting_ticks": 2,
+      "priority_score": 53.5,
+      "hazard_state": "flooded",
+      "water_level": 0.6,
+      "debris_severity": 0.0,
+      "explanation": "High urgency incident; Suffering physical trauma; In flooded roadway (0.6m); Declining health (65%).",
+      "score_breakdown": {
+        "urgency_score": 25.0,
+        "health_score": 10.5,
+        "trapped_score": 0.0,
+        "hazard_score": 8.0,
+        "injured_score": 8.0,
+        "waiting_score": 2.0
+      }
+    }
+  ],
+  "summary": {
+    "total_civilians": 8,
+    "active_unrescued": 8,
+    "rescued_count": 0,
+    "critical_count": 2,
+    "high_count": 3,
+    "medium_count": 2,
+    "low_count": 1,
+    "trapped_count": 2,
+    "injured_count": 4
+  },
+  "is_heuristic": true,
+  "methodology": "RESQ-AI Multi-Factor Weighted Triage Heuristic"
+}
+```
+
+#### Error Response (`400 Bad Request`)
+Returned when simulation has not been initialized.
+```json
+{
+  "detail": "Simulation has not been initialized. Start a scenario before requesting rescue priorities."
+}
+```
+

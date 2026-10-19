@@ -139,3 +139,61 @@ The pathfinding engine implements an optimal 4-directional **A* (A-Star) search 
 2. Route planning requests (`POST /api/v1/simulation/route`) always query the live in-memory `CityGrid`.
 3. If an existing path becomes submerged or blocked by rubble, subsequent calls to the planner automatically evaluate the updated grid, calculating alternate detours or returning a clear unreachable status with explanation.
 
+---
+
+## 7. Phase 4: Intelligent Rescue Prioritization & Civilian Triage
+
+### 7.1 Multi-Factor Triage Scoring Formula
+Rescue prioritization ranks civilians dynamically using a transparent multi-factor scoring formula:
+
+$$\text{Score} = S_{\text{urgency}} + S_{\text{health}} + S_{\text{trapped}} + S_{\text{hazard}} + S_{\text{injured}} + S_{\text{waiting}}$$
+
+1. **Urgency Contribution ($S_{\text{urgency}}$)**:
+   - `CRITICAL`: $+40.0$
+   - `HIGH`: $+25.0$
+   - `MEDIUM`: $+15.0$
+   - `LOW`: $+5.0$
+2. **Health Deficit Contribution ($S_{\text{health}}$)**:
+   - Scaled inverse health percentage: $S_{\text{health}} = (100 - \text{health}) \times 0.30$
+   - Maximum $+30.0$ at $0\%$ health; $0.0$ at $100\%$ health.
+3. **Trapped Physical Status ($S_{\text{trapped}}$)**:
+   - $+15.0$ if status is `TRAPPED`, reflecting physical entrapment.
+4. **Environmental Hazard Exposure ($S_{\text{hazard}}$)**:
+   - Deep flooding ($\ge 1.5$m) or `DANGEROUS` cell: $+15.0$
+   - Structural rubble (`DEBRIS_BLOCKED` or $\text{debris} \ge 2.0$): $\min(12.0, 8.0 + 1.0 \times \text{debris})$
+   - Shallow flood (`FLOODED`): $\min(10.0, 5.0 + 3.0 \times \text{water\_level})$
+   - Safe dry ground: $0.0$
+5. **Injury Status ($S_{\text{injured}}$)**:
+   - $+8.0$ if status is `INJURED`.
+6. **Elapsed Waiting Time ($S_{\text{waiting}}$)**:
+   - $+1.0$ per elapsed simulation tick awaiting rescue, strictly capped at $+10.0$:
+     $$S_{\text{waiting}} = \min(10.0, \text{waiting\_ticks} \times 1.0)$$
+   - The $10.0$ cap guarantees that waiting time never eclipses acute life-threatening emergencies.
+
+### 7.2 Deterministic Tie-Breaking
+When candidates have identical or near-identical priority scores, stable deterministic ordering is enforced:
+1. Priority score descending (higher score first).
+2. Urgency level descending (`CRITICAL` > `HIGH` > `MEDIUM` > `LOW`).
+3. Health percentage ascending (lower health / more acute first).
+4. Civilian ID ascending (`"civ_1"` < `"civ_2"` alphabetically).
+
+### 7.3 Civilian Physiological Deterioration & Tick Order
+During each simulation step (`SimulationEngine.step()`):
+1. **Disaster Advancement**: Flood propagation and earthquake rubble steps advance across the grid.
+2. **Civilian Condition Updates** (`CivilianDeteriorationModel.step_civilians`):
+   - Unrescued civilians increment $\text{waiting\_ticks} \mathrel{+}= 1$.
+   - Civilians in dangerous water ($\ge 1.5$m): lose $8$ HP/tick; status becomes `TRAPPED`; urgency escalates to `CRITICAL`.
+   - Civilians in structural debris ($\ge 2.0$): lose $5$ HP/tick; status becomes `TRAPPED`; urgency escalates to at least `HIGH`.
+   - Civilians in shallow flood: lose $3$ HP/tick; status becomes `INJURED`; urgency escalates to at least `MEDIUM`.
+   - Injured civilians in safe cells: lose $1$ HP/tick trauma decay.
+   - Healthy civilians in safe cells: stable ($0$ HP decay).
+   - Health threshold escalations: $\text{health} \le 25 \implies \text{CRITICAL}$; $\text{health} \le 50 \implies \text{HIGH}$.
+   - Urgencies are never downgraded automatically.
+   - Rescued civilians are safe in shelter and never deteriorate.
+3. **Triage Recalculation**: Priority queue and summary metrics evaluate the updated state.
+4. **Event Emission**: Narrative logs record critical status and urgency transitions.
+
+> [!NOTE]
+> The RESQ-AI triage engine is an educational simulation heuristic for multi-agent response modeling, not a validated clinical triage protocol.
+
+

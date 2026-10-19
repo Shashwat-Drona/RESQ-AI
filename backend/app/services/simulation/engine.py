@@ -19,6 +19,7 @@ from app.schemas.simulation import (
     StartSimulationRequest,
     TickResult,
 )
+from app.services.simulation.civilian_model import CivilianDeteriorationModel
 from app.services.simulation.earthquake_model import EarthquakeSimulationModel
 from app.services.simulation.flood_model import FloodSimulationModel
 from app.services.simulation.grid_generator import CityGridGenerator
@@ -184,6 +185,7 @@ class SimulationEngine:
 
         # 4. Synchronize civilian hazard status with initial cell condition
         for civ in self.civilians:
+            civ.waiting_ticks = 0
             cell = self.grid.cells[civ.coordinate.row][civ.coordinate.col]
             if cell.hazard in [HazardState.FLOODED, HazardState.DEBRIS_BLOCKED]:
                 civ.status = CivilianStatus.TRAPPED
@@ -217,26 +219,14 @@ class SimulationEngine:
             eq_events = self.earthquake_model.step(self.grid, self.current_tick)
             tick_events.extend(eq_events)
 
-        # 3. Update affected civilians condition
-        if self.grid:
-            for civ in self.civilians:
-                if civ.status == CivilianStatus.RESCUED:
-                    continue
-
-                cell = self.grid.cells[civ.coordinate.row][civ.coordinate.col]
-
-                if cell.hazard == HazardState.DANGEROUS or cell.water_level >= 1.5:
-                    civ.status = CivilianStatus.TRAPPED
-                    civ.urgency = UrgencyLevel.CRITICAL
-                    civ.health = max(10, civ.health - 6)
-                    tick_events.append(
-                        f"Civilian {civ.id} endangered by deep flooding at ({cell.coordinate.row}, {cell.coordinate.col}). Health: {civ.health}%."
-                    )
-                elif cell.hazard in [HazardState.FLOODED, HazardState.DEBRIS_BLOCKED]:
-                    if civ.status == CivilianStatus.WAITING:
-                        civ.status = CivilianStatus.INJURED
-                    if civ.urgency == UrgencyLevel.LOW:
-                        civ.urgency = UrgencyLevel.MEDIUM
+        # 3. Update affected civilians condition and triage status
+        if self.grid and self.civilians:
+            civ_events = CivilianDeteriorationModel.step_civilians(
+                civilians=self.civilians,
+                grid=self.grid,
+                current_tick=self.current_tick,
+            )
+            tick_events.extend(civ_events)
 
         self.last_tick_events = tick_events
         state = self.get_state()

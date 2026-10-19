@@ -9,11 +9,13 @@ import { ConfigCard } from "@/components/ConfigCard";
 import { SimulationControls } from "@/components/SimulationControls";
 import { CityGridView } from "@/components/CityGridView";
 import { RoutePlanner } from "@/components/RoutePlanner";
+import { RescuePriorityQueue } from "@/components/RescuePriorityQueue";
 import {
   API_BASE_URL,
   getAppInfo,
   getDefaultConfig,
   getHealth,
+  getRescuePriorities,
   getScenarios,
   getSimulationState,
 } from "@/lib/api";
@@ -21,6 +23,7 @@ import {
   AppInfoResponse,
   Coordinate,
   HealthResponse,
+  PrioritiesResponse,
   RouteResponse,
   ScenarioInfo,
   SimulationConfig,
@@ -40,9 +43,23 @@ export default function HomePage() {
   const [startCoord, setStartCoord] = useState<Coordinate>({ row: 0, col: 0 });
   const [goalCoord, setGoalCoord] = useState<Coordinate>({ row: 19, col: 19 });
 
+  // Phase 4 Rescue Prioritization State
+  const [priorities, setPriorities] = useState<PrioritiesResponse | null>(null);
+  const [selectedCivilianCoord, setSelectedCivilianCoord] =
+    useState<Coordinate | null>(null);
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
+
+  const refreshPriorities = useCallback(async () => {
+    try {
+      const data = await getRescuePriorities();
+      setPriorities(data);
+    } catch {
+      setPriorities(null);
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -64,6 +81,7 @@ export default function HomePage() {
       setSimulationState(stateData);
       setScenarios(scenariosData);
       setLastChecked(new Date());
+      void refreshPriorities();
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -74,7 +92,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [refreshPriorities]);
 
   useEffect(() => {
     let ignore = false;
@@ -98,6 +116,7 @@ export default function HomePage() {
         setSimulationState(stateData);
         setScenarios(scenariosData);
         setLastChecked(new Date());
+        void refreshPriorities();
       } catch (err: unknown) {
         if (ignore) return;
         const msg =
@@ -118,7 +137,7 @@ export default function HomePage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [refreshPriorities]);
 
   const isConnected = !!health && !error;
 
@@ -127,7 +146,7 @@ export default function HomePage() {
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase={appInfo?.phase || "Phase 3: A* Pathfinding & Dynamic Route Planning"}
+        phase={appInfo?.phase || "Phase 4: Intelligent Rescue Prioritization & Civilian Triage"}
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -151,6 +170,7 @@ export default function HomePage() {
           onStateUpdate={(st) => {
             setSimulationState(st);
             setLastChecked(new Date());
+            void refreshPriorities();
           }}
           isLoading={isLoading}
         />
@@ -161,8 +181,18 @@ export default function HomePage() {
           route={currentRoute}
           startCoord={startCoord}
           goalCoord={goalCoord}
+          highlightCoord={selectedCivilianCoord}
           onSetStart={(coord) => setStartCoord(coord)}
           onSetGoal={(coord) => setGoalCoord(coord)}
+        />
+
+        {/* Phase 4 Intelligent Rescue Priority Queue & Triage */}
+        <RescuePriorityQueue
+          priorities={priorities}
+          isLoading={isLoading}
+          selectedCivilianCoord={selectedCivilianCoord}
+          onSelectCivilian={(coord) => setSelectedCivilianCoord(coord)}
+          isSimulationActive={!!simulationState?.grid}
         />
 
         {/* Phase 3 A* Route Planner Controls */}
@@ -190,10 +220,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
               <h3 className="text-sm font-semibold text-slate-200">
-                Phase 3 A* Pathfinding &amp; Disaster Simulation Engine Pipeline
+                Phase 4 Rescue Prioritization &amp; Simulation Engine Pipeline
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Deterministic 4-directional heuristic routing, hazard-aware movement cost matrix, and dynamic replanning across active disaster ticks.
+                Multi-factor deterministic triage scoring, dynamic physiological deterioration, 4-directional A* routing, and lifecycle controls.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -202,7 +232,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs font-mono">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 text-xs font-mono">
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
               <div className="text-slate-400 text-[10px]">SCENARIOS CATALOG</div>
               <div className="text-cyan-400 font-semibold mt-1">
@@ -236,6 +266,14 @@ export default function HomePage() {
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div className="text-slate-400 text-[10px]">RESCUE PRIORITIES</div>
+              <div className="text-rose-400 font-semibold mt-1">
+                GET /api/v1/simulation/priorities
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Ranked triage queue</div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
               <div className="text-slate-400 text-[10px]">STATE TELEMETRY</div>
               <div className="text-amber-400 font-semibold mt-1">
                 GET /api/v1/simulation/state
@@ -250,7 +288,7 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            RESQ-AI © 2026 — Disaster Response Simulator. Phase 2: Disaster Environment &amp; Simulation Engine.
+            RESQ-AI © 2026 — Disaster Response Simulator. Phase 4: Intelligent Rescue Prioritization &amp; Civilian Triage.
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>API: {API_BASE_URL}</span>

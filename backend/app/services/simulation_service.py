@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 from app.core.config import settings
+from app.schemas.prioritization import PrioritiesResponse
 from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
     DisasterType,
@@ -14,6 +15,7 @@ from app.schemas.simulation import (
 )
 from app.services.simulation.engine import SimulationEngine
 from app.services.simulation.pathfinding import AStarPathfinder
+from app.services.simulation.prioritization import RescuePrioritizer
 from app.services.simulation.scenarios import get_all_scenarios
 
 
@@ -120,4 +122,24 @@ class SimulationService:
             start=request.start,
             goal=request.goal,
             profile=request.movement_profile,
+        )
+
+    @classmethod
+    def get_priorities(cls) -> PrioritiesResponse:
+        """Evaluate ranked rescue priority queue against current simulation state.
+        
+        Guarantees:
+        - Evaluates current civilian health, triage urgency, hazard exposure, and waiting ticks.
+        - Non-mutating: Does not advance ticks or modify civilian/simulation state.
+        - Raises ValueError if no active simulation scenario has been initialized.
+        """
+        if not cls._engine.is_active() or cls._engine.grid is None:
+            raise ValueError(
+                "Simulation has not been initialized. Start a scenario before requesting rescue priorities."
+            )
+
+        return RescuePrioritizer.get_priorities_snapshot(
+            current_tick=cls._engine.current_tick,
+            civilians=cls._engine.civilians,
+            grid=cls._engine.grid,
         )

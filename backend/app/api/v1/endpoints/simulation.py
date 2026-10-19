@@ -2,6 +2,7 @@
 
 from typing import List
 from fastapi import APIRouter, HTTPException, status
+from app.schemas.prioritization import PrioritiesResponse
 from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
     ScenarioInfo,
@@ -113,6 +114,25 @@ async def plan_simulation_route(payload: RouteRequest) -> RouteResponse:
     """Evaluate optimal A* route between two coordinates on the active environment grid."""
     try:
         return SimulationService.plan_route(payload)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        )
+
+
+@router.get(
+    "/simulation/priorities",
+    response_model=PrioritiesResponse,
+    summary="Get rescue priority queue and civilian triage summary",
+    responses={
+        400: {"description": "Simulation not initialized"},
+    },
+)
+async def get_rescue_priorities() -> PrioritiesResponse:
+    """Return ranked active rescue queue and aggregate triage summary for current state."""
+    try:
+        return SimulationService.get_priorities()
     except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

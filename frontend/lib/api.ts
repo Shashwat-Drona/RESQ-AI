@@ -7,6 +7,7 @@
 import {
   AppInfoResponse,
   HealthResponse,
+  PrioritiesResponse,
   RouteRequest,
   RouteResponse,
   ScenarioInfo,
@@ -179,4 +180,11 @@ export async function planRoute(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+/**
+ * Fetch rescue priority queue and civilian triage summary.
+ */
+export async function getRescuePriorities(): Promise<PrioritiesResponse> {
+  return request<PrioritiesResponse>("/api/v1/simulation/priorities");
 }
