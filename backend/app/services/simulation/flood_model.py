@@ -24,7 +24,16 @@ class FloodSimulationModel:
             if 0 <= r < grid.rows and 0 <= c < grid.cols:
                 cell = grid.cells[r][c]
                 # Buildings act as barriers; only flood non-buildings directly
-                if cell.terrain != TerrainType.BUILDING:
+                if cell.terrain == TerrainType.BUILDING:
+                    continue
+                elif cell.terrain == TerrainType.SHELTER:
+                    cell.water_level = 0.60
+                    cell.hazard = HazardState.FLOODED
+                    cell.traversable = True
+                    events.append(
+                        f"Flood surge breach adjacent to shelter at ({r}, {c}) [Shelter barrier held at 0.60m]."
+                    )
+                else:
                     cell.water_level = round(1.20, 2)
                     cell.hazard = HazardState.FLOODED
                     events.append(

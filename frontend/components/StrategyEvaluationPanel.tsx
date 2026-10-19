@@ -58,12 +58,12 @@ export function StrategyEvaluationPanel({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-amber-400 font-mono text-sm">08 /</span>
+            <span className="text-amber-400 font-mono text-sm">09 /</span>
             <h3 className="text-base font-semibold text-slate-100">
               Strategy Evaluation &amp; Baseline Benchmark
             </h3>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-amber-950/80 text-amber-300 border border-amber-700/80">
-              Phase 7
+              Benchmark Suite
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">

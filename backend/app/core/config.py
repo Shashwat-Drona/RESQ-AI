@@ -9,10 +9,10 @@ class Settings(BaseSettings):
     """Central application settings loaded from environment or defaults."""
 
     app_name: str = "RESQ-AI"
-    app_version: str = "0.7.0"
-    phase: str = "Phase 7: Evaluation Against a Baseline Strategy"
+    app_version: str = "1.0.0"
+    phase: str = "Phase 8: Final Testing, Polish & Presentation Readiness"
     description: str = (
-        "AI-Powered Disaster Response & Rescue Simulator - Multi-agent emergency operations & strategy benchmarking platform."
+        "AI-Powered Disaster Response & Rescue Simulator - Complete autonomous emergency operations, multi-agent coordination, and strategy benchmarking platform."
     )
     environment: str = "development"
     debug: bool = True

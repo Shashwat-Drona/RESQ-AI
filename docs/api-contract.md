@@ -1,6 +1,6 @@
-# RESQ-AI API Contract (Phase 5)
+# RESQ-AI API Contract (Phase 8)
 
-This document specifies the REST API endpoints implemented in RESQ-AI for Phase 5 (Multi-Agent Rescue Coordination & Autonomous Dispatch). All endpoints communicate over HTTP using JSON payloads and standard status codes.
+This document specifies the complete REST API endpoints implemented in RESQ-AI for Phase 8 (Final Testing, Polish & Presentation Readiness). All endpoints communicate over HTTP using JSON payloads and standard status codes.
 
 ---
 
@@ -35,9 +35,9 @@ Returns current project metadata, active phase identifier, and capability highli
 ```json
 {
   "name": "RESQ-AI",
-  "phase": "Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch",
-  "version": "0.5.0",
-  "description": "AI-Powered Disaster Response & Rescue Simulator - Multi-agent emergency operations platform.",
+  "phase": "Phase 8: Final Testing, Polish & Presentation Readiness",
+  "version": "1.0.0",
+  "description": "AI-Powered Disaster Response & Rescue Simulator - Complete autonomous emergency operations, multi-agent coordination, and strategy benchmarking platform.",
   "supported_disasters": [
     "flood",
     "earthquake"
@@ -526,6 +526,81 @@ Retrieves operational event logs and autonomous dispatch notifications.
     "--- Simulation Tick 8 ---",
     "Rescue Complete: Civilian civ_3 successfully evacuated to Evacuation Shelter B by Bravo-2 (Foot)!"
   ]
+}
+```
+
+---
+
+## 7. Strategy Evaluation & Baseline Benchmarking
+
+### `POST /api/v1/simulation/evaluate`
+Runs an empirical benchmark comparing the AI multi-factor triage coordinator against a naive FIFO baseline across identical scenarios and seeds in an isolated background sandbox.
+
+#### Request Body
+```json
+{
+  "scenario_id": "earthquake_district",
+  "trials": 3,
+  "max_ticks": 40,
+  "seed": 42
+}
+```
+
+#### Success Response (`200 OK`)
+```json
+{
+  "scenario_id": "earthquake_district",
+  "scenario_name": "Earthquake-Damaged District",
+  "trials": 3,
+  "max_ticks": 40,
+  "base_seed": 42,
+  "completed_at": "2026-10-19T18:00:00Z",
+  "ai_strategy": {
+    "strategy": "AI_TRIAGE",
+    "avg_civilians_rescued": 3.0,
+    "avg_unrescued_remaining": 3.0,
+    "avg_critical_rescued": 1.0,
+    "avg_rescue_ticks": 12.33,
+    "avg_population_health": 78.43,
+    "avg_blocked_missions": 0.0,
+    "rescue_rate_pct": 50.0
+  },
+  "baseline_strategy": {
+    "strategy": "BASELINE_FIFO",
+    "avg_civilians_rescued": 3.0,
+    "avg_unrescued_remaining": 3.0,
+    "avg_critical_rescued": 0.67,
+    "avg_rescue_ticks": 11.67,
+    "avg_population_health": 76.51,
+    "avg_blocked_missions": 0.0,
+    "rescue_rate_pct": 50.0
+  },
+  "delta": {
+    "delta_rescued": 0.0,
+    "delta_critical_rescued": 0.33,
+    "delta_avg_ticks": 0.66,
+    "delta_avg_health": 1.92,
+    "delta_blocked_missions": 0.0,
+    "pct_change_rescued": 0.0
+  },
+  "analytical_conclusion": "Across 3 trials, AI Triage rescued 3.00 vs Baseline 3.00 (+0.0% survivors). Critically, AI Triage prioritized high-acuity victims, saving +0.33 critical civilians (+50.0%) and yielding higher mean population health (+1.9% HP).",
+  "trials_detail": []
+}
+```
+
+---
+
+### `GET /api/v1/simulation/evaluate/latest`
+Retrieves cached results from the most recent evaluation run, or returns `latest: null` if no benchmark has been executed yet.
+
+#### Success Response (`200 OK`)
+```json
+{
+  "latest": {
+    "scenario_id": "earthquake_district",
+    "scenario_name": "Earthquake-Damaged District",
+    "trials": 3
+  }
 }
 ```
 

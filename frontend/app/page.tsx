@@ -222,7 +222,7 @@ export default function HomePage() {
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase="Phase 7: Strategy Evaluation & Baseline Benchmark"
+        phase="Phase 8: Final Presentation & Benchmark Readiness"
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -353,7 +353,7 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            RESQ-AI &copy; 2026 — Disaster Response Simulator. Phase 7: Strategy Evaluation &amp; Baseline Benchmark.
+            RESQ-AI &copy; 2026 — Disaster Response Simulator. Phase 8: Final Presentation &amp; Benchmark Readiness.
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>API: {API_BASE_URL}</span>

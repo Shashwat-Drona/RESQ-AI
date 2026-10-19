@@ -72,7 +72,7 @@ export function RoutePlanner({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-blue-400 font-mono text-sm">06 /</span>
+            <span className="text-blue-400 font-mono text-sm">08 /</span>
             <h3 className="text-base font-semibold text-slate-100">
               A* Dynamic Route Planner
             </h3>
