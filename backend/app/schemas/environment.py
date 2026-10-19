@@ -36,6 +36,7 @@ class CivilianStatus(str, Enum):
     WAITING = "waiting"
     INJURED = "injured"
     TRAPPED = "trapped"
+    IN_TRANSIT = "in_transit"
     RESCUED = "rescued"
 
 

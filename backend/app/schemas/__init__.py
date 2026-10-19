@@ -1,5 +1,14 @@
-"""Schemas package exports."""
-
+from app.schemas.agent import (
+    AgentsResponse,
+    AgentStatus,
+    AgentType,
+    DispatchSummary,
+    EventsResponse,
+    MissionsResponse,
+    MissionStatus,
+    RescueAgent,
+    RescueMission,
+)
 from app.schemas.environment import (
     CityGrid,
     Civilian,
@@ -60,4 +69,13 @@ __all__ = [
     "TriageItem",
     "TriageSummary",
     "PrioritiesResponse",
+    "AgentType",
+    "AgentStatus",
+    "MissionStatus",
+    "RescueMission",
+    "RescueAgent",
+    "DispatchSummary",
+    "AgentsResponse",
+    "MissionsResponse",
+    "EventsResponse",
 ]

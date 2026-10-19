@@ -1,43 +1,44 @@
 # RESQ-AI: AI-Powered Disaster Response & Rescue Simulator
 
-> **College AI Project — Phase 4: Intelligent Rescue Prioritization & Civilian Triage**
+> **College AI Project — Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch**
 
 RESQ-AI is an autonomous disaster response simulator modeling emergency operations (floods, earthquakes) across an urban grid. The system incorporates AI-driven rescue agents, dynamic road obstructions, civilian triage, shelter allocation, and resource logistics.
 
-This repository is developed incrementally across 8 phases. **Phase 4** implements a transparent, deterministic **Rescue Prioritization and Civilian Triage** engine, dynamic physiological deterioration, hazard exposure tracking, and an interactive **Rescue Priority Queue** in the mission-control dashboard.
+This repository is developed incrementally across 8 phases. **Phase 5** implements **Heterogeneous Rescue Agents, Autonomous Dispatch, Path Navigation via A*, and Complete Civilian Evacuation to Shelters**.
 
 ---
 
-## 1. Phase 4 Scope & Capabilities
+## 1. Phase 5 Scope & Capabilities
 
-- **Transparent Multi-Factor Triage Scoring (`RescuePrioritizer`)**:
-  - Independent, testable scoring service calculating composite priority scores:
-    $$\text{Score} = S_{\text{urgency}} + S_{\text{health}} + S_{\text{trapped}} + S_{\text{hazard}} + S_{\text{injured}} + S_{\text{waiting}}$$
-  - **Urgency Weights**: `CRITICAL` (+40.0), `HIGH` (+25.0), `MEDIUM` (+15.0), `LOW` (+5.0).
-  - **Health Deficit**: $(100 - \text{health}) \times 0.30$ (up to +30.0 for near-zero health).
-  - **Trapped Bonus**: +15.0 for physically trapped civilians.
-  - **Hazard Exposure**: +15.0 for dangerous water ($\ge 1.5$m); up to +12.0 for structural debris; up to +10.0 for flooded roadways.
-  - **Injury Status**: +8.0 for injured trauma.
-  - **Waiting Time**: +1.0 per tick awaiting rescue, **strictly capped at 10.0** to prevent waiting time from eclipsing acute life-threatening emergencies.
-  - **Deterministic Tie-Breaking**: Priority score (desc), urgency level (desc: CRITICAL > HIGH > MEDIUM > LOW), health percentage (asc: lower health first), and civilian ID (asc: stable alphabetical ordering).
-  - Full component breakdown and clear rationale explanations for each civilian in the queue.
-- **Dynamic Physiological Health Deterioration (`CivilianDeteriorationModel`)**:
-  - Updated on each simulation tick (`SimulationEngine.step()`):
-    - Deep flooding ($\ge 1.5$m) / Dangerous hazard: $-8$ HP/tick, status becomes `TRAPPED`, urgency escalates to `CRITICAL`.
-    - Structural debris ($\ge 2.0$): $-5$ HP/tick, status becomes `TRAPPED`, urgency escalates to `HIGH`.
-    - Flooded roadways: $-3$ HP/tick, status becomes `INJURED`, urgency escalates to `MEDIUM`.
-    - Safe sector with injuries: $-1$ HP/tick ongoing trauma decay.
-    - Safe sector uninjured: $0$ HP decay (stable).
-    - Threshold escalation: health $\le 25 \implies \text{CRITICAL}$; health $\le 50 \implies \text{HIGH}$.
-    - Health clamped strictly in $[0, 100]$.
-    - Rescued civilians in shelters never deteriorate and do not increment waiting time.
-- **Dedicated Priorities API**:
-  - `GET /api/v1/simulation/priorities`: Returns ranked active rescue queue, component score breakdowns, explanations, and aggregate triage summary counts.
-  - Strictly read-only and non-mutating: does not advance ticks or alter civilian health.
-- **Interactive Rescue Priority Queue Frontend (`RescuePriorityQueue`)**:
-  - Live triage metrics ribbon (Total, Unrescued, Critical, High, Medium, Low, Trapped, Rescued).
-  - Priority cards with status badges, urgency icons, visual health meters (green/amber/red), score badges, and expandable score breakdowns.
-  - Click-to-highlight: clicking any civilian in the queue highlights their exact location on the 2D City Grid with a dedicated marker (`👤`).
+- **Heterogeneous Rescue Agents (`RescueAgent`, `AgentType`)**:
+  - **Ground Responder (`ground_responder`)**: Emergency vehicle stationed at shelters operating on roads and open ground. Highly efficient on clear roadways, avoids deep floodwaters ($\ge 1.5$m) and heavy debris.
+  - **Foot Responder (`foot_responder`)**: Search and rescue foot crew stationed at shelters capable of wading through shallow floodwaters ($< 1.0$m) to reach isolated residential sectors.
+  - Movement semantics: 1 grid step per simulation tick, respecting exact terrain and hazard passability rules from `AStarPathfinder`.
+- **Deterministic Autonomous Dispatch Service (`RescueCoordinator`)**:
+  - Automatically queries the active civilian triage queue from `RescuePrioritizer` on every tick.
+  - Evaluates candidate available agents (`status == IDLE`).
+  - Assesses route feasibility and path cost using `AStarPathfinder.plan_route(...)`.
+  - Unreachable high-priority targets do **not** block reachable lower-priority victims; the dispatcher defers unreachable candidates and continues down the queue.
+  - Deterministic tie-breaking: minimum route travel cost, path length, and stable agent ID ascending.
+  - Excludes already assigned, in-transit, or rescued civilians from duplicate mission dispatch.
+- **Full Mission Lifecycle & Evacuation Loop (`RescueMission`, `MissionStatus`)**:
+  - `ASSIGNED` $\to$ `EN_ROUTE` $\to$ `RESCUING` $\to$ `TRANSPORTING` $\to$ `COMPLETED` (or `FAILED` / `CANCELLED`).
+  - Arrival at civilian: civilian transitioned to `IN_TRANSIT` aboard the responder; responder transitioned to `TRANSPORTING`.
+  - In-transit and rescued civilians are protected from ground hazard environmental decay and do not accumulate waiting ticks.
+  - Destination shelter: determined by finding the closest reachable shelter with available capacity (`current_occupancy < capacity`).
+  - Arrival at shelter: civilian status becomes `RESCUED`, shelter `current_occupancy += 1`, simulation `rescued_count += 1`, and agent `completed_rescues += 1`.
+  - Agent returns to `IDLE` state at the shelter, ready for subsequent mission assignments.
+- **Collision Resolution & Dynamic Obstacle Replanning**:
+  - Deterministic right-of-way resolution: if multiple agents intend to enter the same non-shelter cell on the same tick, the agent with lower lexicographical ID proceeds while the other yields and waits 1 tick.
+  - Dynamic replanning: if advancing floodwater or seismic debris blocks the planned route ahead, the agent initiates an immediate A* replan. If an alternative route exists, the agent reroutes; if completely blocked, mission safely fails and target is released.
+- **Simulation Lifecyle & Consistency**:
+  - Strict tick order: Disasters Step $\to$ Civilians Deteriorate $\to$ Active Agents Advance / Evacuate $\to$ Idle Agents Dispatch $\to$ State Synchronized.
+  - Non-mutating GET endpoints: `/simulation/agents`, `/simulation/missions`, `/simulation/events` never advance ticks.
+  - Reset restores a clean initial fleet stationed at shelters with 0 missions and 0 completed rescues.
+- **Interactive Command Center Dashboard**:
+  - **City Grid View (`CityGridView`)**: Real-time rendering of vehicle responders (`🚑`), foot crews (`🏃`), civilian health states (`👤`, `🩹`, `⚠️`), carrying states (`+👤`), status halos, and active agent path waypoints (`◦`).
+  - **Rescue Fleet Panel (`RescueAgentPanel`)**: Live telemetry of unit type, coordinates, operational status, target civilian, patient aboard, and completed rescue counts.
+  - **Mission Dispatch Console (`MissionControlPanel`)**: Fleet statistics ribbon, active mission progress, filterable mission registry, destination waypoints, and operational explanations.
 
 ---
 
@@ -69,60 +70,67 @@ RESQ-AI/
 │   │   │       │   ├── config.py
 │   │   │       │   ├── health.py
 │   │   │       │   ├── info.py
-│   │   │       │   └── simulation.py        # Lifecycle, Route & Priority endpoints
+│   │   │       │   └── simulation.py        # Agents, Missions, Events & Lifecycle
 │   │   │       └── router.py
 │   │   ├── core/
-│   │   │   └── config.py                    # App configuration & settings
+│   │   │   └── config.py                    # Version 0.5.0 & Phase 5 configuration
 │   │   ├── schemas/
-│   │   │   ├── environment.py               # CityGrid, GridCell, TerrainType, HazardState, Civilian
-│   │   │   ├── prioritization.py            # TriageItem, TriageSummary, PrioritiesResponse, ScoreBreakdown
+│   │   │   ├── agent.py                     # RescueAgent, RescueMission, DispatchSummary
+│   │   │   ├── environment.py               # CityGrid, GridCell, CivilianStatus (IN_TRANSIT)
+│   │   │   ├── prioritization.py            # TriageItem, TriageSummary, PrioritiesResponse
 │   │   │   ├── route.py                     # RouteRequest, RouteResponse, MovementProfile
 │   │   │   └── simulation.py                # SimulationState, TickResult, ScenarioInfo
 │   │   ├── services/
 │   │   │   ├── simulation_service.py        # Service orchestrator
 │   │   │   └── simulation/
-│   │   │       ├── civilian_model.py        # Civilian physiological deterioration & urgency escalation
+│   │   │       ├── civilian_model.py        # Deterioration model (protects IN_TRANSIT)
+│   │   │       ├── dispatcher.py            # Phase 5 Autonomous RescueCoordinator
 │   │   │       ├── earthquake_model.py      # Seismic collapse & aftershocks
-│   │   │       ├── engine.py                # SimulationEngine lifecycle manager
+│   │   │       ├── engine.py                # SimulationEngine with fleet coordination
 │   │   │       ├── flood_model.py           # Fluid diffusion & runoff model
 │   │   │       ├── grid_generator.py        # Procedural synthetic city builder
 │   │   │       ├── pathfinding.py           # A* Pathfinding engine & heuristic
-│   │   │       ├── prioritization.py        # Multi-factor rescue prioritizer & triage service
+│   │   │       ├── prioritization.py        # Multi-factor rescue prioritizer
 │   │   │       └── scenarios.py             # Built-in scenario templates
 │   │   └── main.py
 │   └── tests/
-│       ├── conftest.py                      # Engine state reset fixture
-│       ├── test_civilian_deterioration.py   # Health decay & threshold unit tests
+│       ├── conftest.py
+│       ├── test_agents.py                   # Agent schemas & fleet generation tests
+│       ├── test_agents_api.py               # End-to-end API integration tests
+│       ├── test_civilian_deterioration.py
 │       ├── test_config.py
+│       ├── test_dispatcher.py               # Autonomous movement, evacuation & replanning
 │       ├── test_earthquake_model.py
 │       ├── test_flood_model.py
 │       ├── test_grid_generator.py
 │       ├── test_health.py
 │       ├── test_info.py
-│       ├── test_pathfinding.py              # A* algorithm unit tests
-│       ├── test_priorities_api.py           # Priorities API integration tests
-│       ├── test_prioritization.py           # Multi-factor triage scoring unit tests
-│       ├── test_route_api.py                # Route API & dynamic replanning tests
+│       ├── test_pathfinding.py
+│       ├── test_priorities_api.py
+│       ├── test_prioritization.py
+│       ├── test_route_api.py
 │       ├── test_schemas.py
 │       ├── test_simulation.py
 │       ├── test_simulation_api.py
-│       └── test_simulation_engine.py
+│       └── test_simulation_engine.py        # Multi-tick determinism & pause/reset tests
 ├── frontend/
 │   ├── app/
 │   │   ├── layout.tsx
-│   │   └── page.tsx                         # Mission Control Console
+│   │   └── page.tsx                         # Mission Control Dashboard
 │   ├── components/
-│   │   ├── CityGridView.tsx                 # 2D Grid, Path Overlay & Civilian Marker
+│   │   ├── CityGridView.tsx                 # 2D Grid with Agents, Civilians, & Routes
 │   │   ├── ConfigCard.tsx
 │   │   ├── ConnectionBanner.tsx
 │   │   ├── Header.tsx
+│   │   ├── MissionControlPanel.tsx          # Phase 5 Mission Dispatch & Evacuation Control
 │   │   ├── ProjectStatusCard.tsx
-│   │   ├── RescuePriorityQueue.tsx          # Phase 4 Rescue Priority Queue & Triage Summary
+│   │   ├── RescueAgentPanel.tsx             # Phase 5 Autonomous Fleet Telemetry
+│   │   ├── RescuePriorityQueue.tsx          # Phase 4 Rescue Priority Queue & Triage
 │   │   ├── RoutePlanner.tsx                 # Phase 3 A* Route Planner Controls
 │   │   ├── SimulationControls.tsx
 │   │   └── SimulationStateCard.tsx
 │   ├── lib/
-│   │   └── api.ts                           # Typed HTTP client with getRescuePriorities()
+│   │   └── api.ts                           # Typed HTTP client with Agents & Missions APIs
 │   └── types/
 │       └── api.ts                           # TypeScript schema mirrors
 ├── docs/
@@ -182,7 +190,7 @@ From the project root:
 ```powershell
 .\backend\.venv\Scripts\pytest.exe backend/tests -v
 ```
-*(All 82 tests pass with 100% success across rescue prioritization, tie-breaking, health deterioration, A* pathfinding, dynamic replanning, simulation lifecycle, and environment models).*
+*(All 99 tests pass with 100% success across agent schemas, autonomous dispatch, path execution, civilian extraction, shelter evacuation, collision avoidance, dynamic replanning, and simulation determinism).*
 
 ### Frontend Verification
 From `frontend/`:
@@ -194,35 +202,74 @@ npm run build
 
 ---
 
-## 6. Practical PowerShell Testing Examples
+## 6. Verified PowerShell CLI Walkthrough Examples
 
-### 1. Initialize Scenario and Inspect Triage Priorities
+The following live sequence has been verified against the running backend:
+
+### 1. Start a Scenario
 ```powershell
-# Start scenario
-$body = @{ scenario_id = "flooded_neighborhood"; seed = 101 } | ConvertTo-Json
-Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/start -Method Post -Body $body -ContentType "application/json"
-
-# Request rescue priority queue
-$priorities = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/priorities -Method Get
-Write-Host "Unrescued Civilians: $($priorities.summary.active_unrescued) | Critical: $($priorities.summary.critical_count)"
-
-# Display top-ranked civilian
-$top = $priorities.queue[0]
-Write-Host "Rank #1: $($top.civilian_id) | Urgency: $($top.urgency) | Score: $($top.priority_score) | Health: $($top.health)%"
-Write-Host "Rationale: $($top.explanation)"
+$payload = @{ scenario_id = "earthquake_district"; seed = 202; grid_rows = 15; grid_cols = 15; num_civilians = 6; max_agents = 4 } | ConvertTo-Json
+$state = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/start" -Method Post -ContentType "application/json" -Body $payload
+Write-Host "Started scenario:" $state.scenario_id "Status:" $state.status
 ```
 
-### 2. Observe Health Deterioration and Triage Escalation Over Ticks
+### 2. List Deployed Agents and Missions
 ```powershell
-# Advance simulation by 3 ticks
-1..3 | ForEach-Object {
-    Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/tick -Method Post | Out-Null
-}
+$agents = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/agents"
+$missions = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/missions"
+Write-Host "Fleet deployed:" $agents.summary.total_agents "Available:" $agents.summary.available_agents
+```
 
-# Request updated priorities: health declines and urgencies escalate
-$updated = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/priorities -Method Get
-$topUpdated = $updated.queue[0]
-Write-Host "After 3 Ticks - Rank #1: $($topUpdated.civilian_id) | Score: $($topUpdated.priority_score) | Health: $($topUpdated.health)%"
+### 3. View Civilian Triage Priorities
+```powershell
+$priorities = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/priorities"
+$priorities.queue | Select-Object -First 3 | Format-Table rank, civilian_id, urgency, health, priority_score
+```
+
+### 4. Advance Simulation Tick by Tick
+```powershell
+$tick1 = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/tick" -Method Post
+Write-Host "Simulation Tick:" $tick1.current_tick
+$tick1.events | Where-Object { $_ -match "Dispatch" }
+```
+
+### 5. Observe an Agent Moving Toward a Civilian
+```powershell
+$agentBefore = ((Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/agents").agents)[0]
+Write-Host "Tick 1 Location: ($($agentBefore.coordinate.row), $($agentBefore.coordinate.col)) Remaining steps: $($agentBefore.active_path.Count)"
+
+$tick2 = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/tick" -Method Post
+$agentAfter = ((Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/agents").agents)[0]
+Write-Host "Tick 2 Location: ($($agentAfter.coordinate.row), $($agentAfter.coordinate.col)) Remaining steps: $($agentAfter.active_path.Count)"
+```
+
+### 6. Follow a Rescue Mission Through Complete Evacuation
+```powershell
+for ($t = 3; $t -le 15; $t++) {
+    $tick = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/tick" -Method Post
+    $rescues = $tick.events | Where-Object { $_ -match "Rescue Complete" }
+    if ($rescues) {
+        Write-Host "Evacuation Achieved at Tick" $t ":"
+        $rescues | ForEach-Object { Write-Host "  " $_ }
+        break
+    }
+}
+$missions = (Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/missions").missions
+$missions | Select-Object id, agent_id, civilian_id, status, completed_at_tick, explanation | Format-Table
+```
+
+### 7. Inspect Event Logs
+```powershell
+$events = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/events"
+$events.events | Select-Object -Last 10
+```
+
+### 8. Reset and Verify Clean Initial State
+```powershell
+$reset = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/reset" -Method Post
+Write-Host "Reset tick:" $reset.current_tick "rescued_count:" $reset.rescued_count
+$missionsAfter = (Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/v1/simulation/missions").missions
+Write-Host "Active/historical missions after reset:" $missionsAfter.Count
 ```
 
 ---
@@ -230,12 +277,11 @@ Write-Host "After 3 Ticks - Rank #1: $($topUpdated.civilian_id) | Score: $($topU
 ## 7. Educational Simulation Disclaimer
 
 > [!NOTE]
-> The RESQ-AI triage engine is an educational simulation heuristic for disaster response modeling and multi-agent AI research. It is **not** a validated clinical triage system (such as START or SALT) and does not represent real-world medical certainty or diagnoses.
+> The RESQ-AI multi-agent dispatch and triage engine is an educational simulation heuristic for disaster response modeling and emergency management research. It does not represent real-world clinical protocols or operational emergency services dispatch policies.
 
 ---
 
 ## 8. Planned Future Phases
-- **Phase 5**: Heterogeneous Rescue Agents (Ambulances, Boats, Drones) & Autonomous Path Execution.
-- **Phase 6**: AI Dispatch & Multi-Agent Task Allocation (Auction-based / Centralized dispatch to top triage targets).
-- **Phase 7**: Shelters, Depots & Resource Logistics (Fuel, Medical Kits, Triage Capacity).
+- **Phase 6**: Decentralized Task Allocation & Market-Based Auction Mechanisms.
+- **Phase 7**: Shelters, Depots & Resource Logistics (Fuel, Medical Supplies, Battery/Kit replenishment).
 - **Phase 8**: Real-time Analytics, Simulation Replay Controller, and Survival Metrics.

@@ -14,7 +14,7 @@ export type TerrainType = "road" | "building" | "open_ground" | "shelter";
 
 export type HazardState = "safe" | "flooded" | "debris_blocked" | "dangerous";
 
-export type CivilianStatus = "waiting" | "injured" | "trapped" | "rescued";
+export type CivilianStatus = "waiting" | "injured" | "trapped" | "in_transit" | "rescued";
 
 export type UrgencyLevel = "low" | "medium" | "high" | "critical";
 
@@ -190,7 +190,83 @@ export interface SimulationState {
   shelters?: Shelter[];
   scenario_id?: string | null;
   tick_events?: string[];
+  agents?: RescueAgent[];
+  missions?: RescueMission[];
   metadata?: Record<string, unknown>;
+}
+
+export type AgentType = "ground_responder" | "foot_responder";
+
+export type AgentStatus =
+  | "idle"
+  | "en_route"
+  | "rescuing"
+  | "transporting"
+  | "unavailable";
+
+export type MissionStatus =
+  | "assigned"
+  | "en_route"
+  | "rescuing"
+  | "transporting"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export interface RescueMission {
+  id: string;
+  agent_id: string;
+  civilian_id: string;
+  target_coordinate: Coordinate;
+  shelter_id?: string | null;
+  shelter_coordinate?: Coordinate | null;
+  status: MissionStatus;
+  route: Coordinate[];
+  route_step_index: number;
+  created_at_tick: number;
+  completed_at_tick?: number | null;
+  explanation: string;
+}
+
+export interface RescueAgent {
+  id: string;
+  name: string;
+  type: AgentType;
+  coordinate: Coordinate;
+  status: AgentStatus;
+  movement_profile: MovementProfile;
+  current_mission_id?: string | null;
+  target_civilian_id?: string | null;
+  carrying_civilian_id?: string | null;
+  completed_rescues: number;
+  speed_cells_per_tick: number;
+  active_path: Coordinate[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface DispatchSummary {
+  total_agents: number;
+  available_agents: number;
+  active_missions: number;
+  completed_evacuations: number;
+  failed_missions: number;
+}
+
+export interface AgentsResponse {
+  current_tick: number;
+  agents: RescueAgent[];
+  summary: DispatchSummary;
+}
+
+export interface MissionsResponse {
+  current_tick: number;
+  missions: RescueMission[];
+  summary: DispatchSummary;
+}
+
+export interface EventsResponse {
+  current_tick: number;
+  events: string[];
 }
 
 export interface ApiError {
@@ -198,3 +274,4 @@ export interface ApiError {
   status?: number;
   details?: unknown;
 }
+

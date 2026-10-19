@@ -1,6 +1,6 @@
-# RESQ-AI API Contract (Phase 2)
+# RESQ-AI API Contract (Phase 5)
 
-This document specifies the REST API endpoints implemented in RESQ-AI for Phase 2. All endpoints communicate over HTTP using JSON payloads and standard status codes.
+This document specifies the REST API endpoints implemented in RESQ-AI for Phase 5 (Multi-Agent Rescue Coordination & Autonomous Dispatch). All endpoints communicate over HTTP using JSON payloads and standard status codes.
 
 ---
 
@@ -35,8 +35,8 @@ Returns current project metadata, active phase identifier, and capability highli
 ```json
 {
   "name": "RESQ-AI",
-  "phase": "Phase 2: Disaster Environment & Simulation Engine",
-  "version": "0.2.0",
+  "phase": "Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch",
+  "version": "0.5.0",
   "description": "AI-Powered Disaster Response & Rescue Simulator - Multi-agent emergency operations platform.",
   "supported_disasters": [
     "flood",
@@ -411,4 +411,122 @@ Returned when simulation has not been initialized.
   "detail": "Simulation has not been initialized. Start a scenario before requesting rescue priorities."
 }
 ```
+
+---
+
+## 7. Autonomous Rescue Agents & Mission Dispatch
+
+### `GET /api/v1/simulation/agents`
+Retrieves all deployed rescue agents, current coordinates, operational availability status, patient aboard, and fleet summary. Strictly read-only; does not advance ticks.
+
+#### Success Response (`200 OK`)
+```json
+{
+  "current_tick": 4,
+  "agents": [
+    {
+      "id": "agent_ground_1",
+      "name": "Alpha-1 (Vehicle)",
+      "type": "ground_responder",
+      "coordinate": { "row": 2, "col": 3 },
+      "status": "en_route",
+      "movement_profile": "ground_responder",
+      "current_mission_id": "mission_civ_1_1_agent_ground_1",
+      "target_civilian_id": "civ_1",
+      "carrying_civilian_id": null,
+      "completed_rescues": 0,
+      "speed_cells_per_tick": 1,
+      "active_path": [
+        { "row": 2, "col": 4 },
+        { "row": 2, "col": 5 }
+      ],
+      "metadata": {
+        "spawn_location": [0, 0],
+        "unit_type": "ground_responder"
+      }
+    },
+    {
+      "id": "agent_foot_1",
+      "name": "Bravo-1 (Foot)",
+      "type": "foot_responder",
+      "coordinate": { "row": 0, "col": 4 },
+      "status": "idle",
+      "movement_profile": "on_foot",
+      "current_mission_id": null,
+      "target_civilian_id": null,
+      "carrying_civilian_id": null,
+      "completed_rescues": 1,
+      "speed_cells_per_tick": 1,
+      "active_path": [],
+      "metadata": {
+        "spawn_location": [0, 4],
+        "unit_type": "foot_responder"
+      }
+    }
+  ],
+  "summary": {
+    "total_agents": 4,
+    "available_agents": 2,
+    "active_missions": 2,
+    "completed_evacuations": 1,
+    "failed_missions": 0
+  }
+}
+```
+
+---
+
+### `GET /api/v1/simulation/missions`
+Retrieves active, completed, and failed rescue missions, planned routes, and assignment explanations. Strictly read-only.
+
+#### Success Response (`200 OK`)
+```json
+{
+  "current_tick": 8,
+  "missions": [
+    {
+      "id": "mission_civ_3_1_agent_foot_2",
+      "agent_id": "agent_foot_2",
+      "civilian_id": "civ_3",
+      "target_coordinate": { "row": 10, "col": 4 },
+      "shelter_id": "shelter_2",
+      "shelter_coordinate": { "row": 0, "col": 4 },
+      "status": "completed",
+      "route": [
+        { "row": 10, "col": 4 },
+        { "row": 9, "col": 4 },
+        { "row": 0, "col": 4 }
+      ],
+      "route_step_index": 10,
+      "created_at_tick": 1,
+      "completed_at_tick": 8,
+      "explanation": "Civilian civ_3 safely evacuated into Evacuation Shelter B by Bravo-2 (Foot) at tick 8."
+    }
+  ],
+  "summary": {
+    "total_agents": 4,
+    "available_agents": 3,
+    "active_missions": 1,
+    "completed_evacuations": 1,
+    "failed_missions": 0
+  }
+}
+```
+
+---
+
+### `GET /api/v1/simulation/events`
+Retrieves operational event logs and autonomous dispatch notifications.
+
+#### Success Response (`200 OK`)
+```json
+{
+  "current_tick": 8,
+  "events": [
+    "--- Simulation Tick 8 ---",
+    "Rescue Complete: Civilian civ_3 successfully evacuated to Evacuation Shelter B by Bravo-2 (Foot)!"
+  ]
+}
+```
+
 

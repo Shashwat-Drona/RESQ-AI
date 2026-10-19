@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.agent import RescueAgent, RescueMission
 from app.schemas.environment import CityGrid, Civilian, Coordinate, Shelter
 
 
@@ -126,6 +127,14 @@ class SimulationState(BaseModel):
     shelters: List[Shelter] = Field(
         default_factory=list,
         description="List of emergency evacuation shelters",
+    )
+    agents: List[RescueAgent] = Field(
+        default_factory=list,
+        description="List of deployed autonomous rescue agents",
+    )
+    missions: List[RescueMission] = Field(
+        default_factory=list,
+        description="List of active and historical rescue missions",
     )
     scenario_id: Optional[str] = Field(
         default=None,

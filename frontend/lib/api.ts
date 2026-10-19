@@ -5,8 +5,11 @@
  */
 
 import {
+  AgentsResponse,
   AppInfoResponse,
+  EventsResponse,
   HealthResponse,
+  MissionsResponse,
   PrioritiesResponse,
   RouteRequest,
   RouteResponse,
@@ -188,3 +191,25 @@ export async function planRoute(
 export async function getRescuePriorities(): Promise<PrioritiesResponse> {
   return request<PrioritiesResponse>("/api/v1/simulation/priorities");
 }
+
+/**
+ * Fetch all rescue agents and aggregate fleet telemetry.
+ */
+export async function getRescueAgents(): Promise<AgentsResponse> {
+  return request<AgentsResponse>("/api/v1/simulation/agents");
+}
+
+/**
+ * Fetch active and completed rescue missions.
+ */
+export async function getRescueMissions(): Promise<MissionsResponse> {
+  return request<MissionsResponse>("/api/v1/simulation/missions");
+}
+
+/**
+ * Fetch recent simulation and dispatch operational event logs.
+ */
+export async function getSimulationEvents(): Promise<EventsResponse> {
+  return request<EventsResponse>("/api/v1/simulation/events");
+}
+

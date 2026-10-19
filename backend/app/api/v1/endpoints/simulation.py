@@ -2,6 +2,7 @@
 
 from typing import List
 from fastapi import APIRouter, HTTPException, status
+from app.schemas.agent import AgentsResponse, EventsResponse, MissionsResponse
 from app.schemas.prioritization import PrioritiesResponse
 from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
@@ -138,3 +139,34 @@ async def get_rescue_priorities() -> PrioritiesResponse:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(err),
         )
+
+
+@router.get(
+    "/simulation/agents",
+    response_model=AgentsResponse,
+    summary="Get autonomous rescue agents and operational fleet status",
+)
+async def get_rescue_agents() -> AgentsResponse:
+    """Retrieve all deployed rescue agents, current coordinates, active missions, and fleet summary."""
+    return SimulationService.get_agents()
+
+
+@router.get(
+    "/simulation/missions",
+    response_model=MissionsResponse,
+    summary="Get active and historical rescue missions",
+)
+async def get_rescue_missions() -> MissionsResponse:
+    """Retrieve all active, completed, and failed rescue missions and assignment explanations."""
+    return SimulationService.get_missions()
+
+
+@router.get(
+    "/simulation/events",
+    response_model=EventsResponse,
+    summary="Get recent simulation and dispatch event logs",
+)
+async def get_simulation_events() -> EventsResponse:
+    """Retrieve operational event logs and autonomous dispatch notifications."""
+    return SimulationService.get_events()
+

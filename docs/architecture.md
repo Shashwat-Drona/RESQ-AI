@@ -6,11 +6,11 @@
 
 The system is developed through an incremental 8-phase lifecycle:
 - **Phase 1: Project Foundation & Architecture**: Decoupled client-server setup, baseline data contracts, API definitions, testing pipeline, and initial state orchestration.
-- **Phase 2: Disaster Environment & Simulation Engine (Current)**: Deterministic 2D synthetic city environment, procedural road and building networks, numerical flood propagation, structural earthquake collapse, aftershocks, affected civilians, evacuation shelters, and complete simulation lifecycle controls.
-- **Phase 3: Civilian Incident Generation & Urgency Modeling**: Detailed physiological degradation, civilian clustering, distress beacons, and emergency triage.
-- **Phase 4: Rescue Agents & Capability Matrix**: Drones, boats, ambulances, and heavy rescue units with speed, capacity, and terrain constraints.
-- **Phase 5: Pathfinding & Route Navigation**: A*, Dijkstra, and dynamic rerouting around flooded/collapsed road segments.
-- **Phase 6: Multi-Agent Rescue Coordination & AI Dispatch**: Centralized dispatch heuristic / decentralized auction mechanism for optimal task assignment.
+- **Phase 2: Disaster Environment & Simulation Engine**: Deterministic 2D synthetic city environment, procedural road and building networks, numerical flood propagation, structural earthquake collapse, aftershocks, affected civilians, evacuation shelters, and complete simulation lifecycle controls.
+- **Phase 3: Pathfinding & Route Navigation**: A* pathfinding with hazard-aware movement profiles (`ground_responder` vs `on_foot`) and dynamic obstacle avoidance.
+- **Phase 4: Intelligent Rescue Prioritization & Civilian Triage**: Multi-factor deterministic triage scoring, dynamic physiological deterioration, hazard exposure tracking, and priority queue ordering.
+- **Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch (Current)**: Heterogeneous rescue agents, mission lifecycle, autonomous dispatch to top triage targets, path navigation via A*, civilian pickup, transport, dynamic replanning, and shelter evacuation.
+- **Phase 6: Decentralized Task Allocation & Auction Mechanisms**: Distributed market-based negotiation and multi-agent coordination.
 - **Phase 7: Shelters, Depots & Resource Logistics**: Medical supplies, fuel limitations, triage shelters, and resource replenishment loops.
 - **Phase 8: Comprehensive Telemetry, Replay & Evaluation**: Real-time visualization, analytics, simulation replay, and performance metrics (survival rate, response time).
 
@@ -23,6 +23,9 @@ graph TD
     subgraph Frontend ["Next.js (App Router, TypeScript, Tailwind)"]
         UI["Operations Dashboard UI"]
         Controls["Disaster Engine Controls (components/SimulationControls.tsx)"]
+        FleetUI["Rescue Fleet Panel (components/RescueAgentPanel.tsx)"]
+        MissionUI["Mission Dispatch Console (components/MissionControlPanel.tsx)"]
+        GridUI["2D City Grid View (components/CityGridView.tsx)"]
         ApiClient["REST API Client (lib/api.ts)"]
     end
 
@@ -32,24 +35,33 @@ graph TD
         
         subgraph EnginePackage ["services/simulation/"]
             Engine["SimulationEngine (engine.py)"]
+            Coordinator["RescueCoordinator (dispatcher.py)"]
+            Prioritizer["RescuePrioritizer (prioritization.py)"]
+            Pathfinder["AStarPathfinder (pathfinding.py)"]
+            CivModel["CivilianDeteriorationModel (civilian_model.py)"]
             GridGen["CityGridGenerator (grid_generator.py)"]
             FloodMod["FloodSimulationModel (flood_model.py)"]
             EqMod["EarthquakeSimulationModel (earthquake_model.py)"]
             Scenarios["Scenarios Catalog (scenarios.py)"]
         end
 
-        DataContracts["Data Contracts & Validation (schemas/environment.py & simulation.py)"]
+        DataContracts["Data Contracts & Validation (schemas/agent.py, environment.py & simulation.py)"]
     end
 
     UI --> Controls
+    UI --> FleetUI
+    UI --> MissionUI
+    UI --> GridUI
     Controls --> ApiClient
     ApiClient -->|HTTP REST (JSON)| Router
     Router --> SimService
     SimService --> Engine
-    Engine --> GridGen
+    Engine --> Coordinator
+    Coordinator --> Prioritizer
+    Coordinator --> Pathfinder
+    Engine --> CivModel
     Engine --> FloodMod
     Engine --> EqMod
-    Engine --> Scenarios
     Engine --> DataContracts
 ```
 
@@ -69,24 +81,20 @@ The city environment is represented as a 2D matrix of `GridCell` objects indexed
   - `FLOODED`: Water depth between 0.25m and 1.50m. Passable with caution.
   - `DEBRIS_BLOCKED`: Structural rubble with severity >= 2.0. Completely impassable.
   - `DANGEROUS`: Deep water (>= 1.50m). Impassable for standard ground vehicles.
-- **`Traversability`**: Determined dynamically:
-  $$\text{Traversable} = (\text{terrain} \neq \text{BUILDING}) \land (\text{hazard} \neq \text{DEBRIS\_BLOCKED}) \land (\text{water\_level} < 1.50)$$
 
 ---
 
 ## 4. Disaster Mechanics Engine
 
 ### 4.1 Flood Propagation Model
-- **Inflow Sources**: Designated boundary or ruptured infrastructure points inject water volume at each tick ($+0.60\text{m}$ up to a maximum cap of $5.0\text{m}$).
-- **Diffusion & Hydraulic Head**: Water flows to orthogonal neighbors based on hydraulic head differential:
+- Inflow Sources inject water volume at each tick ($+0.60\text{m}$ up to a maximum cap of $5.0\text{m}$).
+- Water diffuses through roads and open ground according to hydraulic head differential:
   $$\text{Head}_{\text{cell}} = \text{Elevation}_{\text{cell}} + \text{WaterLevel}_{\text{cell}}$$
-- **Building Resistance**: Buildings act as impermeable walls; water diffuses exclusively through roads and open ground.
-- **Bounded Invariants**: Water levels strictly satisfy $0.0 \le \text{water\_level} \le 5.0$.
+- Buildings act as impermeable barriers.
 
 ### 4.2 Earthquake Damage & Aftershock Model
-- **Epicenter & Rubble Deposition**: On initialization, seismic energy radiating from an epicenter damages buildings, scattering rubble onto adjacent road segments.
-- **Structural Integrity**: Shelters are seismically reinforced and remain protected.
-- **Discrete Aftershocks**: Geological tremors occur at scheduled ticks (e.g. tick 3 and tick 7), triggering secondary localized debris without behaving like a continuous liquid flow.
+- Seismic tremors damage buildings and scatter structural debris onto adjacent roads.
+- Discrete aftershocks trigger secondary localized debris without behaving like continuous fluid flow.
 
 ---
 
@@ -105,95 +113,81 @@ stateDiagram-v2
     RUNNING --> COMPLETED: All civilians rescued / max ticks
 ```
 
-- **Idempotent Inspection**: `GET /api/v1/simulation/state` reads the current snapshot without advancing time or mutating cell states.
-- **Tick Guard**: Calling `POST /api/v1/simulation/tick` while `PAUSED` or `NOT_STARTED` is rejected with `HTTP 400 Bad Request`.
-- **Deterministic Reset**: `POST /api/v1/simulation/reset` deep-copies the initial snapshot taken at tick 0, restoring the identical initial environment.
-
 ---
 
-## 6. Phase 3: A* Pathfinding & Dynamic Route Planning
+## 6. Phase 4: Intelligent Rescue Prioritization & Civilian Triage
 
-### 6.1 Pathfinding Algorithm & Heuristic
-The pathfinding engine implements an optimal 4-directional **A* (A-Star) search algorithm** operating directly on the active simulation `CityGrid`:
-- **Nodes**: Traversable grid cells $(r, c)$.
-- **Edges**: 4-directional cardinal neighbors $(\Delta r, \Delta c) \in \{(-1, 0), (1, 0), (0, -1), (0, 1)\}$. Diagonal movement is strictly forbidden in this phase.
-- **Priority Queue**: `heapq` storing tuples `(f_score, tie_breaker_counter, (row, col))`. The monotonic tie-breaker counter guarantees strict determinism for identical grids.
-- **Admissible Heuristic**: Standard Manhattan distance:
-  $$h(u, v) = (|r_u - r_v| + |c_u - c_v|) \times \min(\text{edge\_cost})$$
-  Because the minimum step cost across all passable cells is $1.0$ (safe road, shelter, open ground on foot), $h(u, v) = |r_u - r_v| + |c_u - c_v|$ never overestimates the true remaining distance ($h(n) \le h^*(n)$), ensuring A* admissibility and cost-optimality.
-
-### 6.2 Movement Profiles & Cost Matrix
-
-| Cell Terrain / State | Ground Responder (`ground_responder`) | On Foot (`on_foot`) |
-| :--- | :--- | :--- |
-| **Safe Road** | Passable (cost: `1.0`) | Passable (cost: `1.0`) |
-| **Safe Open Ground** | Passable (cost: `1.2`) | Passable (cost: `1.0`) |
-| **Shelter Cell** | Passable (cost: `1.0`) | Passable (cost: `1.0`) |
-| **Shallow Flood ($< 1.5$m)** | Impassable (`None`) | Passable with penalty (`3.0 + 2.0 \times \text{depth}`) |
-| **Dangerous Water ($\ge 1.5$m)** | Impassable (`None`) | Impassable (`None`) |
-| **Debris Blocked (Earthquake)** | Impassable (`None`) | Impassable (`None`) |
-| **Building** | Impassable (`None`) | Impassable (`None`) |
-
-### 6.3 Dynamic Replanning Pipeline
-1. When disaster conditions advance via `POST /api/v1/simulation/tick`, flood waters propagate and earthquake rubble forms.
-2. Route planning requests (`POST /api/v1/simulation/route`) always query the live in-memory `CityGrid`.
-3. If an existing path becomes submerged or blocked by rubble, subsequent calls to the planner automatically evaluate the updated grid, calculating alternate detours or returning a clear unreachable status with explanation.
-
----
-
-## 7. Phase 4: Intelligent Rescue Prioritization & Civilian Triage
-
-### 7.1 Multi-Factor Triage Scoring Formula
-Rescue prioritization ranks civilians dynamically using a transparent multi-factor scoring formula:
-
+### 6.1 Multi-Factor Triage Scoring Formula
 $$\text{Score} = S_{\text{urgency}} + S_{\text{health}} + S_{\text{trapped}} + S_{\text{hazard}} + S_{\text{injured}} + S_{\text{waiting}}$$
 
-1. **Urgency Contribution ($S_{\text{urgency}}$)**:
-   - `CRITICAL`: $+40.0$
-   - `HIGH`: $+25.0$
-   - `MEDIUM`: $+15.0$
-   - `LOW`: $+5.0$
-2. **Health Deficit Contribution ($S_{\text{health}}$)**:
-   - Scaled inverse health percentage: $S_{\text{health}} = (100 - \text{health}) \times 0.30$
-   - Maximum $+30.0$ at $0\%$ health; $0.0$ at $100\%$ health.
-3. **Trapped Physical Status ($S_{\text{trapped}}$)**:
-   - $+15.0$ if status is `TRAPPED`, reflecting physical entrapment.
-4. **Environmental Hazard Exposure ($S_{\text{hazard}}$)**:
-   - Deep flooding ($\ge 1.5$m) or `DANGEROUS` cell: $+15.0$
-   - Structural rubble (`DEBRIS_BLOCKED` or $\text{debris} \ge 2.0$): $\min(12.0, 8.0 + 1.0 \times \text{debris})$
-   - Shallow flood (`FLOODED`): $\min(10.0, 5.0 + 3.0 \times \text{water\_level})$
-   - Safe dry ground: $0.0$
-5. **Injury Status ($S_{\text{injured}}$)**:
-   - $+8.0$ if status is `INJURED`.
-6. **Elapsed Waiting Time ($S_{\text{waiting}}$)**:
-   - $+1.0$ per elapsed simulation tick awaiting rescue, strictly capped at $+10.0$:
-     $$S_{\text{waiting}} = \min(10.0, \text{waiting\_ticks} \times 1.0)$$
-   - The $10.0$ cap guarantees that waiting time never eclipses acute life-threatening emergencies.
+1. **Urgency Contribution ($S_{\text{urgency}}$)**: `CRITICAL` ($+40.0$), `HIGH` ($+25.0$), `MEDIUM` ($+15.0$), `LOW` ($+5.0$).
+2. **Health Deficit Contribution ($S_{\text{health}}$)**: $(100 - \text{health}) \times 0.30$ (up to $+30.0$).
+3. **Trapped Physical Status ($S_{\text{trapped}}$)**: $+15.0$ if physically trapped.
+4. **Environmental Hazard Exposure ($S_{\text{hazard}}$)**: $+15.0$ for dangerous water ($\ge 1.5$m); up to $+12.0$ for structural debris; up to $+10.0$ for flooded roadways.
+5. **Injury Status ($S_{\text{injured}}$)**: $+8.0$ if injured.
+6. **Elapsed Waiting Time ($S_{\text{waiting}}$)**: $+1.0$ per tick awaiting rescue, **capped at $+10.0$**.
 
-### 7.2 Deterministic Tie-Breaking
-When candidates have identical or near-identical priority scores, stable deterministic ordering is enforced:
-1. Priority score descending (higher score first).
-2. Urgency level descending (`CRITICAL` > `HIGH` > `MEDIUM` > `LOW`).
-3. Health percentage ascending (lower health / more acute first).
-4. Civilian ID ascending (`"civ_1"` < `"civ_2"` alphabetically).
+---
 
-### 7.3 Civilian Physiological Deterioration & Tick Order
-During each simulation step (`SimulationEngine.step()`):
-1. **Disaster Advancement**: Flood propagation and earthquake rubble steps advance across the grid.
-2. **Civilian Condition Updates** (`CivilianDeteriorationModel.step_civilians`):
-   - Unrescued civilians increment $\text{waiting\_ticks} \mathrel{+}= 1$.
-   - Civilians in dangerous water ($\ge 1.5$m): lose $8$ HP/tick; status becomes `TRAPPED`; urgency escalates to `CRITICAL`.
-   - Civilians in structural debris ($\ge 2.0$): lose $5$ HP/tick; status becomes `TRAPPED`; urgency escalates to at least `HIGH`.
-   - Civilians in shallow flood: lose $3$ HP/tick; status becomes `INJURED`; urgency escalates to at least `MEDIUM`.
-   - Injured civilians in safe cells: lose $1$ HP/tick trauma decay.
-   - Healthy civilians in safe cells: stable ($0$ HP decay).
-   - Health threshold escalations: $\text{health} \le 25 \implies \text{CRITICAL}$; $\text{health} \le 50 \implies \text{HIGH}$.
-   - Urgencies are never downgraded automatically.
-   - Rescued civilians are safe in shelter and never deteriorate.
-3. **Triage Recalculation**: Priority queue and summary metrics evaluate the updated state.
-4. **Event Emission**: Narrative logs record critical status and urgency transitions.
+## 7. Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch
 
-> [!NOTE]
-> The RESQ-AI triage engine is an educational simulation heuristic for multi-agent response modeling, not a validated clinical triage protocol.
+### 7.1 Heterogeneous Rescue Agent Model
+Rescue agents are situated entities navigating the 2D synthetic city environment:
+- **`GROUND_RESPONDER`**: Heavy emergency ambulance operating primarily on roadways and clear ground. Uses `MovementProfile.GROUND_RESPONDER`. Traverses safe roads at unit cost ($1.0$), avoids deep flooding ($\ge 1.5$m) and heavy debris ($\ge 2.0$).
+- **`FOOT_RESPONDER`**: Specialized search and rescue foot team operating on all passable surfaces. Uses `MovementProfile.ON_FOOT`. Can wade through shallow floodwaters ($< 1.0$m) with traversal penalties, reaching isolated residents cut off from vehicular access.
 
+### 7.2 Mission Lifecycle State Machine
 
+```mermaid
+stateDiagram-v2
+    [*] --> ASSIGNED: Triage dispatch assigns idle agent
+    ASSIGNED --> EN_ROUTE: Agent begins A* path navigation
+    EN_ROUTE --> RESCUING: Agent reaches civilian coordinate
+    RESCUING --> TRANSPORTING: Civilian boarded (IN_TRANSIT); route to shelter calculated
+    TRANSPORTING --> COMPLETED: Agent reaches shelter coordinate; civilian safely sheltered
+    EN_ROUTE --> FAILED: Target coordinate completely impassable
+    TRANSPORTING --> FAILED: All evacuation shelters blocked or at capacity
+    ASSIGNED --> CANCELLED: Mission invalidated or target missing
+    COMPLETED --> [*]: Agent returns to IDLE state
+    FAILED --> [*]: Agent released to IDLE or UNAVAILABLE
+```
+
+### 7.3 Deterministic Dispatch Policy (`RescueCoordinator`)
+1. **Candidate Triage Queue**: Obtain ranked unrescued civilians from `RescuePrioritizer.rank_civilians(...)`.
+2. **Eligibility Filtering**: Consider only civilians with status $\neq \text{RESCUED}$ and $\neq \text{IN\_TRANSIT}$ that are not currently assigned to any active mission.
+3. **Responder Pool**: Filter agents that are `IDLE` with `current_mission_id is None`.
+4. **Feasibility Evaluation**: For each candidate civilian along the triage queue:
+   - For each available agent, plan an A* route from `agent.coordinate` to `civilian.coordinate` with the agent's exact movement profile.
+   - If feasible routes exist, select the winning agent using stable tie-breaking:
+     $$\min(\text{route\_cost}) \implies \min(\text{path\_length}) \implies \text{agent\_id asc}$$
+   - Create and record `RescueMission`, update agent to `EN_ROUTE`, set `active_path`.
+   - If no available agent can reach the civilian, the dispatcher logs the impediment and defers to the next triage candidate without blocking lower-priority reachable victims.
+
+### 7.4 Autonomous Movement & Collision Avoidance
+- **Speed**: Default 1 grid step per tick.
+- **Deterministic Right-of-Way**: When two agents intend to move into the exact same non-shelter grid cell on the same tick, the agent with lower lexicographical ID proceeds. The other agent yields, staying stationary for 1 tick with an event log entry.
+- **Shelter Depot Capacity**: Depots/shelters can house multiple stationary or arriving agents simultaneously.
+
+### 7.5 Civilian Extraction & Shelter Evacuation
+- **Extraction**: When an `EN_ROUTE` agent reaches the civilian's coordinate, civilian status is set to `IN_TRANSIT` aboard the agent. While in transit, civilians are protected from ground hazard environmental decay and do not accumulate waiting ticks.
+- **Destination Selection**: `find_nearest_available_shelter` finds the closest reachable shelter with available capacity (`current_occupancy < capacity`) using A*.
+- **Evacuation**: When the agent arrives at the shelter:
+  - Civilian status becomes `RESCUED`.
+  - Shelter `current_occupancy += 1`.
+  - Engine `rescued_count += 1`.
+  - Agent `completed_rescues += 1`.
+  - Agent status returns to `IDLE`.
+
+### 7.6 Dynamic Replanning Pipeline
+At each tick before movement:
+- If an agent's next planned step is blocked by rising flood waters or structural earthquake debris, the agent triggers an immediate A* replan to the target/shelter.
+- If an alternate path exists, the route and `active_path` are updated, and the agent continues.
+- If no path exists, the mission fails cleanly and the agent is released.
+
+### 7.7 Execution Order per Simulation Tick
+To eliminate race conditions, double movement, and inconsistent states, each simulation step (`SimulationEngine.step()`) executes strictly in the following deterministic sequence:
+1. **Disaster Advancement**: Flood propagation models and earthquake debris models step.
+2. **Civilian Deterioration**: `CivilianDeteriorationModel.step_civilians` updates unrescued, non-in-transit civilians.
+3. **Active Agent Movement & Evacuation**: Active responders check route passability, trigger dynamic replanning if blocked, execute single-step moves with collision yielding, and process arrivals (extraction or shelter delivery).
+4. **Autonomous Dispatch**: `RescueCoordinator.dispatch_idle_agents` assigns newly available or idle agents to top triage targets.
+5. **State Synchronization**: Telemetry and event logs are compiled into `TickResult`.

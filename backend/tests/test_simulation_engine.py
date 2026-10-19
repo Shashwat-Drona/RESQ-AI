@@ -112,3 +112,55 @@ def test_get_state_is_idempotent_and_non_mutating():
     assert state1.current_tick == state2.current_tick
     assert state1.status == state2.status
     assert state1.active_incidents == state2.active_incidents
+
+
+def test_simulation_determinism_reproducibility():
+    """Identical seed and scenario must produce byte-for-byte identical agent and mission trajectories."""
+    # Run 1
+    engine1 = SimulationEngine()
+    engine1.start(StartSimulationRequest(scenario_id="flooded_neighborhood", seed=777, max_agents=4))
+    for _ in range(8):
+        engine1.step()
+    state1 = engine1.get_state()
+
+    # Run 2
+    engine2 = SimulationEngine()
+    engine2.start(StartSimulationRequest(scenario_id="flooded_neighborhood", seed=777, max_agents=4))
+    for _ in range(8):
+        engine2.step()
+    state2 = engine2.get_state()
+
+    assert state1.current_tick == state2.current_tick == 8
+    assert state1.rescued_count == state2.rescued_count
+    assert len(state1.missions) == len(state2.missions)
+    for a1, a2 in zip(state1.agents, state2.agents):
+        assert a1.id == a2.id
+        assert a1.coordinate == a2.coordinate
+        assert a1.status == a2.status
+        assert a1.completed_rescues == a2.completed_rescues
+
+
+def test_pause_halts_agents_and_missions():
+    """Pausing halts tick execution; resuming enables continuation without state corruption."""
+    engine = SimulationEngine()
+    engine.start(StartSimulationRequest(scenario_id="earthquake_district", seed=123, max_agents=3))
+    engine.step()
+    engine.step()
+
+    # Pause
+    paused_state = engine.pause()
+    assert paused_state.status == SimulationStatus.PAUSED
+
+    # Attempting step on paused engine raises SimulationNotRunningError
+    with pytest.raises(SimulationNotRunningError):
+        engine.step()
+
+    # Telemetry unchanged while paused
+    assert engine.current_tick == 2
+    resumed_state = engine.resume()
+    assert resumed_state.status == SimulationStatus.RUNNING
+
+    # Step proceeds normally after resume
+    tick3 = engine.step()
+    assert tick3.current_tick == 3
+

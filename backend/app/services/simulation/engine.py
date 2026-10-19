@@ -19,7 +19,9 @@ from app.schemas.simulation import (
     StartSimulationRequest,
     TickResult,
 )
+from app.schemas.agent import AgentStatus, RescueAgent, RescueMission
 from app.services.simulation.civilian_model import CivilianDeteriorationModel
+from app.services.simulation.dispatcher import RescueCoordinator
 from app.services.simulation.earthquake_model import EarthquakeSimulationModel
 from app.services.simulation.flood_model import FloodSimulationModel
 from app.services.simulation.grid_generator import CityGridGenerator
@@ -57,6 +59,8 @@ class SimulationEngine:
         self.initial_snapshot: Optional[SimulationState] = None
         self.last_tick_events: List[str] = []
         self.rescued_count: int = 0
+        self.agents: List[RescueAgent] = []
+        self.missions: List[RescueMission] = []
 
     def is_active(self) -> bool:
         """Check if simulation has an initialized environment."""
@@ -67,6 +71,7 @@ class SimulationEngine:
         active_incidents = sum(
             1 for c in self.civilians if c.status != CivilianStatus.RESCUED
         )
+        active_agents_count = len([a for a in self.agents if a.status != AgentStatus.UNAVAILABLE])
 
         message = (
             "Simulation is active and running."
@@ -83,17 +88,19 @@ class SimulationEngine:
             current_tick=self.current_tick,
             config=self.config,
             active_incidents=active_incidents,
-            active_agents=0,  # Agents are implemented in future phases
+            active_agents=active_agents_count,
             rescued_count=self.rescued_count,
             message=message,
             updated_at=datetime.now(timezone.utc),
             grid=self.grid,
             civilians=self.civilians,
             shelters=self.shelters,
+            agents=self.agents,
+            missions=self.missions,
             scenario_id=self.scenario_id,
             tick_events=list(self.last_tick_events),
             metadata={
-                "phase": 2,
+                "phase": 5,
                 "engine_mode": self.status.value,
                 "scenario": self.scenario_id or "default",
                 "seed": self.seed,
@@ -191,6 +198,16 @@ class SimulationEngine:
                 civ.status = CivilianStatus.TRAPPED
                 civ.urgency = UrgencyLevel.HIGH
 
+        # 5. Initialize autonomous rescue fleet
+        self.agents = RescueCoordinator.create_default_fleet(
+            shelters=self.shelters,
+            max_agents=max_agents,
+        )
+        self.missions = []
+        init_events.append(
+            f"Rescue fleet deployed: {len(self.agents)} autonomous units stationed at shelters."
+        )
+
         self.current_tick = 0
         self.rescued_count = 0
         self.status = SimulationStatus.RUNNING
@@ -228,6 +245,30 @@ class SimulationEngine:
             )
             tick_events.extend(civ_events)
 
+        # 4. Advance rescue agent movement, arrivals, transport, and replanning
+        if self.grid and self.agents:
+            newly_rescued, agent_events = RescueCoordinator.step_agents_and_missions(
+                agents=self.agents,
+                missions=self.missions,
+                civilians=self.civilians,
+                shelters=self.shelters,
+                grid=self.grid,
+                current_tick=self.current_tick,
+            )
+            self.rescued_count += newly_rescued
+            tick_events.extend(agent_events)
+
+        # 5. Autonomous dispatch for available idle agents to triage targets
+        if self.grid and self.agents and self.civilians:
+            new_missions, dispatch_events = RescueCoordinator.dispatch_idle_agents(
+                agents=self.agents,
+                civilians=self.civilians,
+                grid=self.grid,
+                current_tick=self.current_tick,
+                missions=self.missions,
+            )
+            tick_events.extend(dispatch_events)
+
         self.last_tick_events = tick_events
         state = self.get_state()
         return TickResult(
@@ -263,6 +304,8 @@ class SimulationEngine:
             self.shelters = snapshot.shelters
             self.config = snapshot.config
             self.rescued_count = 0
+            self.agents = [a.model_copy(deep=True) for a in snapshot.agents]
+            self.missions = [m.model_copy(deep=True) for m in snapshot.missions]
             self.last_tick_events = [
                 f"Simulation reset to initial state (Seed: {self.seed})."
             ]

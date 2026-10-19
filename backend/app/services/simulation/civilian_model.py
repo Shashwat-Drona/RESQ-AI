@@ -45,8 +45,8 @@ class CivilianDeteriorationModel:
         events: List[str] = []
 
         for civ in civilians:
-            # Rescued civilians are safe in shelter
-            if civ.status == CivilianStatus.RESCUED:
+            # Rescued or in-transit civilians aboard rescue units are safe from environmental decay
+            if civ.status in (CivilianStatus.RESCUED, CivilianStatus.IN_TRANSIT):
                 continue
 
             # Increment waiting time spent awaiting rescue

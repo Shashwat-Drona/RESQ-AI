@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 from app.core.config import settings
+from app.schemas.agent import AgentsResponse, EventsResponse, MissionsResponse
 from app.schemas.prioritization import PrioritiesResponse
 from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
@@ -13,6 +14,7 @@ from app.schemas.simulation import (
     StartSimulationRequest,
     TickResult,
 )
+from app.services.simulation.dispatcher import RescueCoordinator
 from app.services.simulation.engine import SimulationEngine
 from app.services.simulation.pathfinding import AStarPathfinder
 from app.services.simulation.prioritization import RescuePrioritizer
@@ -143,3 +145,49 @@ class SimulationService:
             civilians=cls._engine.civilians,
             grid=cls._engine.grid,
         )
+
+    @classmethod
+    def get_agents(cls) -> AgentsResponse:
+        """Query all autonomous rescue agents and aggregate fleet telemetry.
+        
+        Guarantees:
+        - Non-mutating: Does not advance ticks or modify agent state.
+        """
+        agents = cls._engine.agents if cls._engine.is_active() else []
+        missions = cls._engine.missions if cls._engine.is_active() else []
+        summary = RescueCoordinator.get_summary(agents, missions)
+        return AgentsResponse(
+            current_tick=cls._engine.current_tick if cls._engine.is_active() else 0,
+            agents=agents,
+            summary=summary,
+        )
+
+    @classmethod
+    def get_missions(cls) -> MissionsResponse:
+        """Query active and historical rescue missions.
+        
+        Guarantees:
+        - Non-mutating: Does not advance ticks or modify mission state.
+        """
+        agents = cls._engine.agents if cls._engine.is_active() else []
+        missions = cls._engine.missions if cls._engine.is_active() else []
+        summary = RescueCoordinator.get_summary(agents, missions)
+        return MissionsResponse(
+            current_tick=cls._engine.current_tick if cls._engine.is_active() else 0,
+            missions=missions,
+            summary=summary,
+        )
+
+    @classmethod
+    def get_events(cls) -> EventsResponse:
+        """Query recent simulation dispatch and environmental operational event logs.
+        
+        Guarantees:
+        - Non-mutating: Does not advance ticks or modify event history.
+        """
+        events = list(cls._engine.last_tick_events) if cls._engine.is_active() else []
+        return EventsResponse(
+            current_tick=cls._engine.current_tick if cls._engine.is_active() else 0,
+            events=events,
+        )
+

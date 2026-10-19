@@ -10,11 +10,15 @@ import { SimulationControls } from "@/components/SimulationControls";
 import { CityGridView } from "@/components/CityGridView";
 import { RoutePlanner } from "@/components/RoutePlanner";
 import { RescuePriorityQueue } from "@/components/RescuePriorityQueue";
+import { RescueAgentPanel } from "@/components/RescueAgentPanel";
+import { MissionControlPanel } from "@/components/MissionControlPanel";
 import {
   API_BASE_URL,
   getAppInfo,
   getDefaultConfig,
   getHealth,
+  getRescueAgents,
+  getRescueMissions,
   getRescuePriorities,
   getScenarios,
   getSimulationState,
@@ -22,8 +26,11 @@ import {
 import {
   AppInfoResponse,
   Coordinate,
+  DispatchSummary,
   HealthResponse,
   PrioritiesResponse,
+  RescueAgent,
+  RescueMission,
   RouteResponse,
   ScenarioInfo,
   SimulationConfig,
@@ -48,6 +55,12 @@ export default function HomePage() {
   const [selectedCivilianCoord, setSelectedCivilianCoord] =
     useState<Coordinate | null>(null);
 
+  // Phase 5 Autonomous Fleet & Mission Dispatch State
+  const [agents, setAgents] = useState<RescueAgent[]>([]);
+  const [missions, setMissions] = useState<RescueMission[]>([]);
+  const [dispatchSummary, setDispatchSummary] = useState<DispatchSummary | undefined>(undefined);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -58,6 +71,22 @@ export default function HomePage() {
       setPriorities(data);
     } catch {
       setPriorities(null);
+    }
+  }, []);
+
+  const refreshFleetAndMissions = useCallback(async () => {
+    try {
+      const [agentsRes, missionsRes] = await Promise.all([
+        getRescueAgents(),
+        getRescueMissions(),
+      ]);
+      setAgents(agentsRes.agents);
+      setMissions(missionsRes.missions);
+      setDispatchSummary(agentsRes.summary);
+    } catch {
+      setAgents([]);
+      setMissions([]);
+      setDispatchSummary(undefined);
     }
   }, []);
 
@@ -82,6 +111,7 @@ export default function HomePage() {
       setScenarios(scenariosData);
       setLastChecked(new Date());
       void refreshPriorities();
+      void refreshFleetAndMissions();
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -92,7 +122,7 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshPriorities]);
+  }, [refreshPriorities, refreshFleetAndMissions]);
 
   useEffect(() => {
     let ignore = false;
@@ -117,6 +147,7 @@ export default function HomePage() {
         setScenarios(scenariosData);
         setLastChecked(new Date());
         void refreshPriorities();
+        void refreshFleetAndMissions();
       } catch (err: unknown) {
         if (ignore) return;
         const msg =
@@ -137,7 +168,7 @@ export default function HomePage() {
     return () => {
       ignore = true;
     };
-  }, [refreshPriorities]);
+  }, [refreshPriorities, refreshFleetAndMissions]);
 
   const isConnected = !!health && !error;
 
@@ -146,7 +177,7 @@ export default function HomePage() {
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase={appInfo?.phase || "Phase 4: Intelligent Rescue Prioritization & Civilian Triage"}
+        phase={appInfo?.phase || "Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch"}
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -171,19 +202,41 @@ export default function HomePage() {
             setSimulationState(st);
             setLastChecked(new Date());
             void refreshPriorities();
+            void refreshFleetAndMissions();
           }}
           isLoading={isLoading}
         />
 
-        {/* Phase 3 Live 2D Grid & Route Visualizer */}
+        {/* Phase 3 & 5 Live 2D Grid, Responders, & Route Visualizer */}
         <CityGridView
           grid={simulationState?.grid}
           route={currentRoute}
           startCoord={startCoord}
           goalCoord={goalCoord}
           highlightCoord={selectedCivilianCoord}
+          agents={agents}
+          civilians={simulationState?.civilians}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
           onSetStart={(coord) => setStartCoord(coord)}
           onSetGoal={(coord) => setGoalCoord(coord)}
+        />
+
+        {/* Phase 5 Autonomous Rescue Fleet Telemetry */}
+        <RescueAgentPanel
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
+          isLoading={isLoading}
+          isSimulationActive={!!simulationState?.grid}
+        />
+
+        {/* Phase 5 Autonomous Mission Dispatch & Evacuation Control */}
+        <MissionControlPanel
+          missions={missions}
+          summary={dispatchSummary}
+          isLoading={isLoading}
+          isSimulationActive={!!simulationState?.grid}
         />
 
         {/* Phase 4 Intelligent Rescue Priority Queue & Triage */}
@@ -220,10 +273,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
               <h3 className="text-sm font-semibold text-slate-200">
-                Phase 4 Rescue Prioritization &amp; Simulation Engine Pipeline
+                Phase 5 Multi-Agent Rescue Coordination &amp; Autonomous Dispatch Pipeline
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Multi-factor deterministic triage scoring, dynamic physiological deterioration, 4-directional A* routing, and lifecycle controls.
+                Deterministic triage target selection, A* autonomous path execution, heterogeneous responder movement, dynamic replanning, and shelter evacuation.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -232,53 +285,37 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 text-xs font-mono">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">SCENARIOS CATALOG</div>
+              <div className="text-slate-400 text-[10px]">RESCUE AGENTS FLEET</div>
               <div className="text-cyan-400 font-semibold mt-1">
-                GET /api/v1/simulation/scenarios
+                GET /api/v1/simulation/agents
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">Built-in templates</div>
+              <div className="text-[10px] text-slate-400 mt-1">Status &amp; waypoints</div>
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">SCENARIO INIT</div>
-              <div className="text-emerald-400 font-semibold mt-1">
-                POST /api/v1/simulation/start
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Seeded environment</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">TICK DISPATCHER</div>
-              <div className="text-blue-400 font-semibold mt-1">
-                POST /api/v1/simulation/tick
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Step disaster (+1)</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">A* ROUTE PLANNER</div>
+              <div className="text-slate-400 text-[10px]">MISSION DISPATCH LOG</div>
               <div className="text-purple-400 font-semibold mt-1">
-                POST /api/v1/simulation/route
+                GET /api/v1/simulation/missions
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">Dynamic heuristic path</div>
+              <div className="text-[10px] text-slate-400 mt-1">Assignments &amp; routes</div>
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">RESCUE PRIORITIES</div>
+              <div className="text-slate-400 text-[10px]">DISPATCH EVENTS</div>
+              <div className="text-blue-400 font-semibold mt-1">
+                GET /api/v1/simulation/events
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Autonomous event logs</div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div className="text-slate-400 text-[10px]">TRIAGE PRIORITIES</div>
               <div className="text-rose-400 font-semibold mt-1">
                 GET /api/v1/simulation/priorities
               </div>
               <div className="text-[10px] text-slate-400 mt-1">Ranked triage queue</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">STATE TELEMETRY</div>
-              <div className="text-amber-400 font-semibold mt-1">
-                GET /api/v1/simulation/state
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Grid, civs, shelters</div>
             </div>
           </div>
         </section>
@@ -288,7 +325,7 @@ export default function HomePage() {
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            RESQ-AI © 2026 — Disaster Response Simulator. Phase 4: Intelligent Rescue Prioritization &amp; Civilian Triage.
+            RESQ-AI © 2026 — Disaster Response Simulator. Phase 5: Multi-Agent Rescue Coordination &amp; Autonomous Dispatch.
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>API: {API_BASE_URL}</span>
