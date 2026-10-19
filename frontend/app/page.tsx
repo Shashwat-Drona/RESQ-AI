@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { AiArchitectureIntro } from "@/components/AiArchitectureIntro";
+import { SituationOverview } from "@/components/SituationOverview";
 import { ProjectStatusCard } from "@/components/ProjectStatusCard";
 import { SimulationStateCard } from "@/components/SimulationStateCard";
 import { ConfigCard } from "@/components/ConfigCard";
@@ -12,6 +14,7 @@ import { RoutePlanner } from "@/components/RoutePlanner";
 import { RescuePriorityQueue } from "@/components/RescuePriorityQueue";
 import { RescueAgentPanel } from "@/components/RescueAgentPanel";
 import { MissionControlPanel } from "@/components/MissionControlPanel";
+import { EventTimeline } from "@/components/EventTimeline";
 import {
   API_BASE_URL,
   getAppInfo,
@@ -21,6 +24,7 @@ import {
   getRescueMissions,
   getRescuePriorities,
   getScenarios,
+  getSimulationEvents,
   getSimulationState,
 } from "@/lib/api";
 import {
@@ -54,12 +58,17 @@ export default function HomePage() {
   const [priorities, setPriorities] = useState<PrioritiesResponse | null>(null);
   const [selectedCivilianCoord, setSelectedCivilianCoord] =
     useState<Coordinate | null>(null);
+  const [selectedCivilianId, setSelectedCivilianId] = useState<string | null>(null);
 
   // Phase 5 Autonomous Fleet & Mission Dispatch State
   const [agents, setAgents] = useState<RescueAgent[]>([]);
   const [missions, setMissions] = useState<RescueMission[]>([]);
   const [dispatchSummary, setDispatchSummary] = useState<DispatchSummary | undefined>(undefined);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+
+  // Phase 5 / 6 Event Timeline
+  const [events, setEvents] = useState<string[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,17 +85,20 @@ export default function HomePage() {
 
   const refreshFleetAndMissions = useCallback(async () => {
     try {
-      const [agentsRes, missionsRes] = await Promise.all([
+      const [agentsRes, missionsRes, eventsRes] = await Promise.all([
         getRescueAgents(),
         getRescueMissions(),
+        getSimulationEvents().catch(() => ({ events: [], count: 0, current_tick: 0 })),
       ]);
       setAgents(agentsRes.agents);
       setMissions(missionsRes.missions);
       setDispatchSummary(agentsRes.summary);
+      setEvents(eventsRes.events || []);
     } catch {
       setAgents([]);
       setMissions([]);
       setDispatchSummary(undefined);
+      setEvents([]);
     }
   }, []);
 
@@ -170,17 +182,49 @@ export default function HomePage() {
     };
   }, [refreshPriorities, refreshFleetAndMissions]);
 
+  const handleSelectCivilian = (coord: Coordinate, civilianId?: string) => {
+    setSelectedCivilianCoord(coord);
+    if (civilianId) {
+      setSelectedCivilianId(civilianId);
+    } else {
+      // Find matching civilian from state if any
+      const match = simulationState?.civilians?.find(
+        (c) => c.coordinate.row === coord.row && c.coordinate.col === coord.col
+      );
+      setSelectedCivilianId(match?.id ?? null);
+    }
+  };
+
+  const handleSelectMission = (mission: RescueMission) => {
+    if (selectedMissionId === mission.id) {
+      setSelectedMissionId(null);
+    } else {
+      setSelectedMissionId(mission.id);
+      setSelectedAgentId(mission.agent_id);
+      setSelectedCivilianCoord(mission.target_coordinate);
+      setSelectedCivilianId(mission.civilian_id);
+    }
+  };
+
   const isConnected = !!health && !error;
+  const isSimulationActive = !!simulationState?.grid;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase={appInfo?.phase || "Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch"}
+        phase="Phase 6: Professional Disaster Command Dashboard"
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
+        simulationStatus={simulationState?.status}
+        currentTick={simulationState?.current_tick}
+        activeScenario={
+          scenarios.find((s) => s.id === simulationState?.scenario_id)?.name ??
+          simulationState?.scenario_id ??
+          null
+        }
       />
 
       {/* Main Mission Control Console */}
@@ -194,7 +238,18 @@ export default function HomePage() {
           isLoading={isLoading}
         />
 
-        {/* Phase 2 Simulation Lifecycle Controls */}
+        {/* Academic / Demo Introduction Banner */}
+        <AiArchitectureIntro />
+
+        {/* Section 01: High-Level Situation Overview KPI Dashboard */}
+        <SituationOverview
+          triageSummary={priorities?.summary}
+          dispatchSummary={dispatchSummary}
+          rescuedCount={priorities?.summary?.rescued_count ?? dispatchSummary?.completed_evacuations ?? 0}
+          isSimulationActive={isSimulationActive}
+        />
+
+        {/* Section 02: Simulation Controls & Scenario Selector */}
         <SimulationControls
           scenarios={scenarios}
           simulationState={simulationState}
@@ -207,7 +262,7 @@ export default function HomePage() {
           isLoading={isLoading}
         />
 
-        {/* Phase 3 & 5 Live 2D Grid, Responders, & Route Visualizer */}
+        {/* Section 03: Live 2D Tactical City Grid, Responders, & Route Visualizer */}
         <CityGridView
           grid={simulationState?.grid}
           route={currentRoute}
@@ -222,33 +277,44 @@ export default function HomePage() {
           onSetGoal={(coord) => setGoalCoord(coord)}
         />
 
-        {/* Phase 5 Autonomous Rescue Fleet Telemetry */}
+        {/* Section 04: Autonomous Rescue Fleet Telemetry */}
         <RescueAgentPanel
           agents={agents}
           selectedAgentId={selectedAgentId}
           onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
           isLoading={isLoading}
-          isSimulationActive={!!simulationState?.grid}
+          isSimulationActive={isSimulationActive}
         />
 
-        {/* Phase 5 Autonomous Mission Dispatch & Evacuation Control */}
+        {/* Section 05: Autonomous Mission Dispatch & Evacuation Control */}
         <MissionControlPanel
           missions={missions}
           summary={dispatchSummary}
           isLoading={isLoading}
-          isSimulationActive={!!simulationState?.grid}
+          isSimulationActive={isSimulationActive}
+          selectedMissionId={selectedMissionId}
+          onSelectMission={handleSelectMission}
         />
 
-        {/* Phase 4 Intelligent Rescue Priority Queue & Triage */}
+        {/* Section 06: Intelligent Rescue Priority Queue & Triage */}
         <RescuePriorityQueue
           priorities={priorities}
           isLoading={isLoading}
           selectedCivilianCoord={selectedCivilianCoord}
-          onSelectCivilian={(coord) => setSelectedCivilianCoord(coord)}
-          isSimulationActive={!!simulationState?.grid}
+          selectedCivilianId={selectedCivilianId}
+          onSelectCivilian={handleSelectCivilian}
+          isSimulationActive={isSimulationActive}
         />
 
-        {/* Phase 3 A* Route Planner Controls */}
+        {/* Section 07: Live Incident Event Timeline */}
+        <EventTimeline
+          events={events}
+          currentTick={simulationState?.current_tick ?? 0}
+          isLoading={isLoading}
+          isSimulationActive={isSimulationActive}
+        />
+
+        {/* Section 08: Manual A* Route Planner & Movement Profile Evaluator */}
         <RoutePlanner
           gridRows={simulationState?.grid?.rows ?? 20}
           gridCols={simulationState?.grid?.cols ?? 20}
@@ -258,74 +324,22 @@ export default function HomePage() {
           onSetGoal={(coord) => setGoalCoord(coord)}
           onRouteCalculated={(route) => setCurrentRoute(route)}
           currentRoute={currentRoute}
-          isSimulationActive={!!simulationState?.grid}
+          isSimulationActive={isSimulationActive}
         />
 
-        {/* Dashboard Telemetry Grid */}
+        {/* Section 09: System Telemetry Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ProjectStatusCard info={appInfo} isLoading={isLoading} />
           <SimulationStateCard state={simulationState} isLoading={isLoading} />
           <ConfigCard config={config} isLoading={isLoading} />
         </div>
-
-        {/* Tactical Architecture & Contract Inspector */}
-        <section className="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-200">
-                Phase 5 Multi-Agent Rescue Coordination &amp; Autonomous Dispatch Pipeline
-              </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Deterministic triage target selection, A* autonomous path execution, heterogeneous responder movement, dynamic replanning, and shelter evacuation.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-              <span>REST JSON Protocol</span>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">RESCUE AGENTS FLEET</div>
-              <div className="text-cyan-400 font-semibold mt-1">
-                GET /api/v1/simulation/agents
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Status &amp; waypoints</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">MISSION DISPATCH LOG</div>
-              <div className="text-purple-400 font-semibold mt-1">
-                GET /api/v1/simulation/missions
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Assignments &amp; routes</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">DISPATCH EVENTS</div>
-              <div className="text-blue-400 font-semibold mt-1">
-                GET /api/v1/simulation/events
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Autonomous event logs</div>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">TRIAGE PRIORITIES</div>
-              <div className="text-rose-400 font-semibold mt-1">
-                GET /api/v1/simulation/priorities
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">Ranked triage queue</div>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
-            RESQ-AI © 2026 — Disaster Response Simulator. Phase 5: Multi-Agent Rescue Coordination &amp; Autonomous Dispatch.
+            RESQ-AI &copy; 2026 — Disaster Response Simulator. Phase 6: Professional Disaster Command Dashboard.
           </div>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>API: {API_BASE_URL}</span>

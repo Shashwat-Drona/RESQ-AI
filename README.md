@@ -1,14 +1,14 @@
 # RESQ-AI: AI-Powered Disaster Response & Rescue Simulator
 
-> **College AI Project — Phase 5: Multi-Agent Rescue Coordination & Autonomous Dispatch**
+> **College AI Project — Phase 6: Professional Disaster Command Dashboard & Interactive Map Polish**
 
 RESQ-AI is an autonomous disaster response simulator modeling emergency operations (floods, earthquakes) across an urban grid. The system incorporates AI-driven rescue agents, dynamic road obstructions, civilian triage, shelter allocation, and resource logistics.
 
-This repository is developed incrementally across 8 phases. **Phase 5** implements **Heterogeneous Rescue Agents, Autonomous Dispatch, Path Navigation via A*, and Complete Civilian Evacuation to Shelters**.
+This repository is developed incrementally across 8 phases. **Phase 6** transforms the frontend into an emergency-operations **Disaster Command Center** with a rich 2D interactive tactical city map, real-time KPI overview, multi-factor triage filtering, live fleet telemetry, mission dispatch tracking, event timeline, and presentation-ready academic architecture breakdown.
 
 ---
 
-## 1. Phase 5 Scope & Capabilities
+## 1. Phase 6 Command Center Architecture & Capabilities
 
 - **Heterogeneous Rescue Agents (`RescueAgent`, `AgentType`)**:
   - **Ground Responder (`ground_responder`)**: Emergency vehicle stationed at shelters operating on roads and open ground. Highly efficient on clear roadways, avoids deep floodwaters ($\ge 1.5$m) and heavy debris.
@@ -35,10 +35,16 @@ This repository is developed incrementally across 8 phases. **Phase 5** implemen
   - Strict tick order: Disasters Step $\to$ Civilians Deteriorate $\to$ Active Agents Advance / Evacuate $\to$ Idle Agents Dispatch $\to$ State Synchronized.
   - Non-mutating GET endpoints: `/simulation/agents`, `/simulation/missions`, `/simulation/events` never advance ticks.
   - Reset restores a clean initial fleet stationed at shelters with 0 missions and 0 completed rescues.
-- **Interactive Command Center Dashboard**:
-  - **City Grid View (`CityGridView`)**: Real-time rendering of vehicle responders (`🚑`), foot crews (`🏃`), civilian health states (`👤`, `🩹`, `⚠️`), carrying states (`+👤`), status halos, and active agent path waypoints (`◦`).
-  - **Rescue Fleet Panel (`RescueAgentPanel`)**: Live telemetry of unit type, coordinates, operational status, target civilian, patient aboard, and completed rescue counts.
-  - **Mission Dispatch Console (`MissionControlPanel`)**: Fleet statistics ribbon, active mission progress, filterable mission registry, destination waypoints, and operational explanations.
+- **Disaster Command Center Dashboard**:
+  - **Header & System Status (`Header`)**: Live simulation status pill (`RUNNING (Tick X)`, `PAUSED`, `STANDBY`), active disaster scenario name, API connectivity indicator, and manual sync action.
+  - **Academic AI Architecture Overview (`AiArchitectureIntro`)**: Collapsible 5 AI pillars breakdown (A* Pathfinding, Explainable Triage, Dynamic Disaster Modeling, Autonomous Multi-Agent Dispatch, Evacuation to Shelters) with explicit educational heuristic disclaimer.
+  - **Situation Overview KPI Cards (`SituationOverview`)**: 6 live mission metrics (Unrescued Civilians, Critical Priority, Active Missions, Available Units, Rescued Civilians, Blocked/Failed Missions).
+  - **Interactive City Map & Tactical Cell Inspector (`CityGridView`)**: Tactical 2D matrix rendering roads, buildings, open terrain, shelters (`⌂`), shallow/deep water, seismic debris, civilian status (`👤`, `🩹`, `⚠️`), ground vehicles (`🚑`), foot responders (`🏃`), patient aboard badges (`+👤`), status halos, active waypoints (`◦`), and an integrated side Inspector with live cell coordinates, terrain, hazard, resident entity vitals, and "Set as Start / Goal" routing buttons.
+  - **Autonomous Rescue Fleet (`RescueAgentPanel`)**: Live telemetry of responder units with filtering by status (`All`, `Busy`, `Idle`) and type (`🚑 Vehicles`, `🏃 Foot`), showing coordinates, operational status, target civilian, carrying patient, remaining waypoints, and completed rescues.
+  - **Mission Dispatch & Evacuation Control (`MissionControlPanel`)**: Fleet statistics ribbon, filterable mission registry (`All`, `Active`, `Rescued`, `Blocked`), destination waypoints, operational explanations, and click-to-inspect integration connecting missions to agents and civilians on the map.
+  - **Civilian Triage & Rescue Priority Queue (`RescuePriorityQueue`)**: Deterministic priority ranking with filter pills (Urgency: `Critical`, `High`, `Medium`, `Low`; Status: `Trapped`, `Injured`, `Waiting`), multi-criteria sorting (Rank, Triage Score, Critical HP, Longest Wait), instant search filter, expandable 6-part score breakdown, and click-to-highlight grid coordination.
+  - **Incident Event Timeline (`EventTimeline`)**: Reverse-chronological categorized event log (🏆 Evacuations, 🤝 Dispatch, ⚡ Extraction, 🔄 Replanning, ⚠️ Blockages) with simulation tick badges and text search filtering.
+  - **Controlled Simulation Lifecycle (`SimulationControls`)**: Scenario selection, seed input, safe sequential Auto-Play with configurable interval (1.0s, 1.5s, 2.0s), single-step tick (+1), pause/resume, and two-step inline reset confirmation popover.
 
 ---
 

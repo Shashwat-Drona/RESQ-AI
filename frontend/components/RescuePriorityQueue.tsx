@@ -1,32 +1,82 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Coordinate, PrioritiesResponse, TriageItem } from "@/types/api";
 
 interface RescuePriorityQueueProps {
   priorities: PrioritiesResponse | null;
   isLoading: boolean;
   selectedCivilianCoord?: Coordinate | null;
-  onSelectCivilian?: (coord: Coordinate) => void;
+  selectedCivilianId?: string | null;
+  onSelectCivilian?: (coord: Coordinate, civilianId?: string) => void;
   isSimulationActive: boolean;
 }
+
+type UrgencyFilter = "all" | "critical" | "high" | "medium" | "low";
+type StatusFilter = "all" | "trapped" | "injured" | "waiting";
+type SortOption = "score_desc" | "health_asc" | "wait_desc" | "rank_asc";
 
 export function RescuePriorityQueue({
   priorities,
   isLoading,
   selectedCivilianCoord,
+  selectedCivilianId,
   onSelectCivilian,
   isSimulationActive,
 }: RescuePriorityQueueProps) {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [urgencyFilter, setUrgencyFilter] = useState<UrgencyFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortOption, setSortOption] = useState<SortOption>("rank_asc");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Filter and sort client-side on actual API data without altering backend state
+  const displayedItems = useMemo(() => {
+    if (!priorities?.queue) return [];
+    let result = [...priorities.queue];
+
+    if (urgencyFilter !== "all") {
+      result = result.filter((item) => item.urgency === urgencyFilter);
+    }
+
+    if (statusFilter !== "all") {
+      result = result.filter((item) => item.status === statusFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(
+        (item) =>
+          item.civilian_id.toLowerCase().includes(q) ||
+          item.explanation.toLowerCase().includes(q) ||
+          `(${item.coordinate.row},${item.coordinate.col})`.includes(q)
+      );
+    }
+
+    result.sort((a, b) => {
+      switch (sortOption) {
+        case "score_desc":
+          return b.priority_score - a.priority_score;
+        case "health_asc":
+          return a.health - b.health;
+        case "wait_desc":
+          return b.waiting_ticks - a.waiting_ticks;
+        case "rank_asc":
+        default:
+          return a.rank - b.rank;
+      }
+    });
+
+    return result;
+  }, [priorities, urgencyFilter, statusFilter, sortOption, searchQuery]);
 
   if (!isSimulationActive || !priorities) {
     return (
       <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
         <div className="flex items-center gap-2 pb-4 border-b border-slate-800">
-          <span className="text-rose-400 font-mono text-sm">07 /</span>
+          <span className="text-rose-400 font-mono text-sm">06 /</span>
           <h3 className="text-base font-semibold text-slate-100">
-            Rescue Priority Queue &amp; Civilian Triage
+            Civilian Triage &amp; Rescue Priority Queue
           </h3>
         </div>
         <div className="mt-6 text-center py-8">
@@ -46,28 +96,28 @@ export function RescuePriorityQueue({
       case "critical":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-950/80 text-rose-300 border border-rose-700/80 shadow-xs">
-            <span>🚨</span>
+            <span aria-hidden="true">🚨</span>
             <span>Critical</span>
           </span>
         );
       case "high":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-950/80 text-amber-300 border border-amber-700/80">
-            <span>⚠️</span>
+            <span aria-hidden="true">⚠️</span>
             <span>High</span>
           </span>
         );
       case "medium":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-yellow-950/60 text-yellow-300 border border-yellow-700/60">
-            <span>⚡</span>
+            <span aria-hidden="true">⚡</span>
             <span>Medium</span>
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium uppercase bg-blue-950/60 text-blue-300 border border-blue-800/60">
-            <span>ℹ️</span>
+            <span aria-hidden="true">ℹ️</span>
             <span>Low</span>
           </span>
         );
@@ -110,8 +160,10 @@ export function RescuePriorityQueue({
   };
 
   const isSelected = (item: TriageItem) =>
-    selectedCivilianCoord?.row === item.coordinate.row &&
-    selectedCivilianCoord?.col === item.coordinate.col;
+    (selectedCivilianCoord &&
+      selectedCivilianCoord.row === item.coordinate.row &&
+      selectedCivilianCoord.col === item.coordinate.col) ||
+    selectedCivilianId === item.civilian_id;
 
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-6">
@@ -119,13 +171,13 @@ export function RescuePriorityQueue({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-rose-400 font-mono text-sm">07 /</span>
+            <span className="text-rose-400 font-mono text-sm">06 /</span>
             <h3 className="text-base font-semibold text-slate-100">
-              Rescue Priority Queue &amp; Civilian Triage
+              Civilian Triage &amp; Rescue Priority Queue
             </h3>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Deterministic multi-factor triage heuristic. Click any civilian to highlight coordinate on the city grid.
+            Deterministic multi-factor triage heuristic. Click any civilian to highlight coordinates on the city grid.
           </p>
         </div>
 
@@ -139,8 +191,8 @@ export function RescuePriorityQueue({
           <span className="text-[11px] font-mono text-slate-400 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
             Tick {priorities.current_tick} Triage
           </span>
-          <span className="text-[10px] text-slate-500 italic">
-            Simulation Heuristic
+          <span className="text-[10px] text-slate-500 italic bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800/60">
+            Heuristic Model
           </span>
         </div>
       </div>
@@ -204,29 +256,101 @@ export function RescuePriorityQueue({
         </div>
       </div>
 
+      {/* Filter and Sort Toolbar */}
+      <div className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Urgency Filter */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] text-slate-400 uppercase font-mono mr-1">Urgency:</span>
+          {(["all", "critical", "high", "medium", "low"] as UrgencyFilter[]).map((u) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => setUrgencyFilter(u)}
+              className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition-all ${
+                urgencyFilter === u
+                  ? "bg-slate-700 text-white font-semibold"
+                  : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+              }`}
+            >
+              {u}
+            </button>
+          ))}
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] text-slate-400 uppercase font-mono mr-1">Status:</span>
+          {(["all", "trapped", "injured", "waiting"] as StatusFilter[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s)}
+              className={`px-2 py-0.5 rounded text-[11px] font-medium capitalize transition-all ${
+                statusFilter === s
+                  ? "bg-slate-700 text-white font-semibold"
+                  : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort & Search */}
+        <div className="flex items-center gap-2 ml-auto">
+          <label htmlFor="triage-sort" className="text-[11px] text-slate-400 uppercase font-mono">
+            Sort:
+          </label>
+          <select
+            id="triage-sort"
+            value={sortOption}
+            onChange={(e) => setSortOption(e.target.value as SortOption)}
+            className="bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 outline-hidden"
+          >
+            <option value="rank_asc">Triage Rank (#1 first)</option>
+            <option value="score_desc">Triage Score (Highest first)</option>
+            <option value="health_asc">Health (Lowest / Critical HP first)</option>
+            <option value="wait_desc">Wait Time (Longest first)</option>
+          </select>
+
+          <input
+            type="text"
+            placeholder="Search ID / text..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-slate-900 border border-slate-800 text-slate-200 placeholder-slate-600 text-xs rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 outline-hidden w-28 sm:w-36"
+          />
+        </div>
+      </div>
+
       {/* Priority Queue List */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs text-slate-400 px-2 pb-1">
-          <span>Ranked Active Rescue Candidates ({queue.length})</span>
+          <span>
+            Ranked Active Rescue Candidates ({displayedItems.length}{" "}
+            {displayedItems.length !== queue.length && `filtered from ${queue.length}`})
+          </span>
           <span className="text-[11px] text-slate-500">
-            Sorted by Score ↓ &bull; Urgency ↓ &bull; Health ↑
+            Interactive: Click to inspect location on grid
           </span>
         </div>
 
-        {queue.length === 0 ? (
+        {displayedItems.length === 0 ? (
           <div className="p-6 text-center rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-400">
-            🎉 All civilians have been evacuated safely to shelters!
+            {queue.length === 0
+              ? "All civilians have been evacuated safely to shelters!"
+              : "No candidates match the active filters."}
           </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {queue.map((item) => {
+            {displayedItems.map((item) => {
               const selected = isSelected(item);
               const isExpanded = expandedItemId === item.civilian_id;
 
               return (
                 <div
                   key={item.civilian_id}
-                  onClick={() => onSelectCivilian?.(item.coordinate)}
+                  onClick={() => onSelectCivilian?.(item.coordinate, item.civilian_id)}
                   className={`p-3 rounded-lg border transition-all cursor-pointer ${
                     selected
                       ? "bg-slate-900 border-blue-500 ring-1 ring-blue-500 shadow-md"
@@ -237,7 +361,7 @@ export function RescuePriorityQueue({
                     {/* Rank & Identity */}
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-7 h-7 rounded-full flex items-center justify-center font-mono text-xs font-bold ${
+                        className={`w-7 h-7 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
                           item.rank === 1
                             ? "bg-rose-500 text-white ring-2 ring-rose-400/50"
                             : item.rank === 2
@@ -251,7 +375,7 @@ export function RescuePriorityQueue({
                       </div>
 
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-semibold text-slate-200">
                             {item.civilian_id.toUpperCase()}
                           </span>
@@ -260,6 +384,11 @@ export function RescuePriorityQueue({
                           </span>
                           {getUrgencyBadge(item.urgency)}
                           {getStatusBadge(item.status)}
+                          {selected && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono uppercase bg-blue-950 text-blue-300 border border-blue-700">
+                              Selected
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-400 mt-1 line-clamp-1">
                           {item.explanation}
@@ -268,7 +397,7 @@ export function RescuePriorityQueue({
                     </div>
 
                     {/* Health & Score Telemetry */}
-                    <div className="flex items-center gap-4 sm:justify-end">
+                    <div className="flex items-center gap-4 sm:justify-end shrink-0">
                       {/* Health Meter */}
                       <div className="w-24 space-y-1">
                         <div className="flex justify-between text-[10px] font-mono">
@@ -316,8 +445,9 @@ export function RescuePriorityQueue({
                           e.stopPropagation();
                           setExpandedItemId(isExpanded ? null : item.civilian_id);
                         }}
-                        className="text-[11px] text-slate-500 hover:text-slate-300 p-1"
+                        className="text-[11px] text-slate-500 hover:text-slate-300 p-1 rounded hover:bg-slate-800"
                         title="Toggle score breakdown"
+                        aria-label="Toggle score breakdown"
                       >
                         {isExpanded ? "▲" : "▼"}
                       </button>
