@@ -108,3 +108,34 @@ stateDiagram-v2
 - **Idempotent Inspection**: `GET /api/v1/simulation/state` reads the current snapshot without advancing time or mutating cell states.
 - **Tick Guard**: Calling `POST /api/v1/simulation/tick` while `PAUSED` or `NOT_STARTED` is rejected with `HTTP 400 Bad Request`.
 - **Deterministic Reset**: `POST /api/v1/simulation/reset` deep-copies the initial snapshot taken at tick 0, restoring the identical initial environment.
+
+---
+
+## 6. Phase 3: A* Pathfinding & Dynamic Route Planning
+
+### 6.1 Pathfinding Algorithm & Heuristic
+The pathfinding engine implements an optimal 4-directional **A* (A-Star) search algorithm** operating directly on the active simulation `CityGrid`:
+- **Nodes**: Traversable grid cells $(r, c)$.
+- **Edges**: 4-directional cardinal neighbors $(\Delta r, \Delta c) \in \{(-1, 0), (1, 0), (0, -1), (0, 1)\}$. Diagonal movement is strictly forbidden in this phase.
+- **Priority Queue**: `heapq` storing tuples `(f_score, tie_breaker_counter, (row, col))`. The monotonic tie-breaker counter guarantees strict determinism for identical grids.
+- **Admissible Heuristic**: Standard Manhattan distance:
+  $$h(u, v) = (|r_u - r_v| + |c_u - c_v|) \times \min(\text{edge\_cost})$$
+  Because the minimum step cost across all passable cells is $1.0$ (safe road, shelter, open ground on foot), $h(u, v) = |r_u - r_v| + |c_u - c_v|$ never overestimates the true remaining distance ($h(n) \le h^*(n)$), ensuring A* admissibility and cost-optimality.
+
+### 6.2 Movement Profiles & Cost Matrix
+
+| Cell Terrain / State | Ground Responder (`ground_responder`) | On Foot (`on_foot`) |
+| :--- | :--- | :--- |
+| **Safe Road** | Passable (cost: `1.0`) | Passable (cost: `1.0`) |
+| **Safe Open Ground** | Passable (cost: `1.2`) | Passable (cost: `1.0`) |
+| **Shelter Cell** | Passable (cost: `1.0`) | Passable (cost: `1.0`) |
+| **Shallow Flood ($< 1.5$m)** | Impassable (`None`) | Passable with penalty (`3.0 + 2.0 \times \text{depth}`) |
+| **Dangerous Water ($\ge 1.5$m)** | Impassable (`None`) | Impassable (`None`) |
+| **Debris Blocked (Earthquake)** | Impassable (`None`) | Impassable (`None`) |
+| **Building** | Impassable (`None`) | Impassable (`None`) |
+
+### 6.3 Dynamic Replanning Pipeline
+1. When disaster conditions advance via `POST /api/v1/simulation/tick`, flood waters propagate and earthquake rubble forms.
+2. Route planning requests (`POST /api/v1/simulation/route`) always query the live in-memory `CityGrid`.
+3. If an existing path becomes submerged or blocked by rubble, subsequent calls to the planner automatically evaluate the updated grid, calculating alternate detours or returning a clear unreachable status with explanation.
+

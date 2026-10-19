@@ -18,9 +18,29 @@ export type CivilianStatus = "waiting" | "injured" | "trapped" | "rescued";
 
 export type UrgencyLevel = "low" | "medium" | "high" | "critical";
 
+export type MovementProfile = "ground_responder" | "on_foot";
+
 export interface Coordinate {
   row: number;
   col: number;
+}
+
+export interface RouteRequest {
+  start: Coordinate;
+  goal: Coordinate;
+  movement_profile?: MovementProfile;
+}
+
+export interface RouteResponse {
+  found: boolean;
+  start: Coordinate;
+  goal: Coordinate;
+  path: Coordinate[];
+  path_length: number;
+  total_cost: number;
+  expanded_nodes: number;
+  movement_profile: MovementProfile;
+  reason?: string | null;
 }
 
 export interface GridCell {

@@ -7,6 +7,8 @@
 import {
   AppInfoResponse,
   HealthResponse,
+  RouteRequest,
+  RouteResponse,
   ScenarioInfo,
   SimulationConfig,
   SimulationState,
@@ -164,5 +166,17 @@ export async function resumeSimulation(): Promise<SimulationState> {
 export async function resetSimulation(): Promise<SimulationState> {
   return request<SimulationState>("/api/v1/simulation/reset", {
     method: "POST",
+  });
+}
+
+/**
+ * Plan an optimal A* route on the active simulation grid.
+ */
+export async function planRoute(
+  payload: RouteRequest
+): Promise<RouteResponse> {
+  return request<RouteResponse>("/api/v1/simulation/route", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }

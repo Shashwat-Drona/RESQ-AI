@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 from app.core.config import settings
+from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
     DisasterType,
     ScenarioInfo,
@@ -12,6 +13,7 @@ from app.schemas.simulation import (
     TickResult,
 )
 from app.services.simulation.engine import SimulationEngine
+from app.services.simulation.pathfinding import AStarPathfinder
 from app.services.simulation.scenarios import get_all_scenarios
 
 
@@ -98,3 +100,24 @@ class SimulationService:
     def reset_simulation(cls) -> SimulationState:
         """Reset active scenario back to initial tick 0 state."""
         return cls._engine.reset()
+
+    @classmethod
+    def plan_route(cls, request: RouteRequest) -> RouteResponse:
+        """Evaluate optimal A* route against the current active simulation grid.
+        
+        Guarantees:
+        - Evaluates against the active environmental terrain and hazard state.
+        - Non-mutating: Does not advance ticks or modify simulation state.
+        - Raises ValueError if no active simulation scenario has been initialized.
+        """
+        if not cls._engine.is_active() or cls._engine.grid is None:
+            raise ValueError(
+                "Simulation has not been initialized. Start a scenario before requesting routes."
+            )
+
+        return AStarPathfinder.plan_route(
+            grid=cls._engine.grid,
+            start=request.start,
+            goal=request.goal,
+            profile=request.movement_profile,
+        )

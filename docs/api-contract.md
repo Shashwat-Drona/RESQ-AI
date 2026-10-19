@@ -258,3 +258,76 @@ Restores the initial seeded scenario at tick 0 with clean terrain and original c
 
 #### Success Response (`200 OK`)
 Returns `SimulationState` with `current_tick: 0` and `status: "running"`.
+
+---
+
+## 4. Phase 3: Pathfinding & Route Planning
+
+### `POST /api/v1/simulation/route`
+Computes an optimal 4-directional A* route between two coordinates in the active city grid, taking into account terrain and dynamic hazards for the specified movement profile. Does not advance simulation ticks or mutate state.
+
+#### Request Body
+```json
+{
+  "start": { "row": 0, "col": 0 },
+  "goal": { "row": 15, "col": 15 },
+  "movement_profile": "ground_responder"
+}
+```
+
+- `start` (object, required): Start `Coordinate` (`row >= 0`, `col >= 0`).
+- `goal` (object, required): Goal `Coordinate` (`row >= 0`, `col >= 0`).
+- `movement_profile` (string, optional, default `"ground_responder"`): Selected responder capabilities:
+  - `"ground_responder"`: Conventional rescue vehicle (avoids dangerous water $\ge 1.5$m, buildings, debris).
+  - `"on_foot"`: Responder on foot (can wade shallow flood waters with elevated cost, avoids dangerous water, buildings, debris).
+
+#### Success Response (`200 OK`) - Route Found
+```json
+{
+  "found": true,
+  "start": { "row": 0, "col": 0 },
+  "goal": { "row": 15, "col": 15 },
+  "path": [
+    { "row": 0, "col": 0 },
+    { "row": 0, "col": 1 },
+    { "row": 1, "col": 1 }
+  ],
+  "path_length": 2,
+  "total_cost": 2.0,
+  "expanded_nodes": 12,
+  "movement_profile": "ground_responder",
+  "reason": null
+}
+```
+
+#### Success Response (`200 OK`) - Route Blocked / Unreachable
+```json
+{
+  "found": false,
+  "start": { "row": 0, "col": 0 },
+  "goal": { "row": 2, "col": 2 },
+  "path": [],
+  "path_length": 0,
+  "total_cost": 0.0,
+  "expanded_nodes": 45,
+  "movement_profile": "ground_responder",
+  "reason": "Destination is completely blocked by buildings or hazards."
+}
+```
+
+#### Error Response (`400 Bad Request`)
+Returned when simulation has not been initialized or active grid is unavailable.
+```json
+{
+  "detail": "Simulation grid is not initialized. Please start a scenario first."
+}
+```
+
+#### Error Response (`422 Unprocessable Content`)
+Returned when coordinates are outside the grid dimensions or coordinates fail schema validation.
+```json
+{
+  "detail": "Start coordinate (25, 25) is outside grid dimensions (20x20)."
+}
+```
+

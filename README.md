@@ -1,41 +1,42 @@
 # RESQ-AI: AI-Powered Disaster Response & Rescue Simulator
 
-> **College AI Project — Phase 2: Disaster Environment & Simulation Engine**
+> **College AI Project — Phase 3: A* Pathfinding & Dynamic Route Planning**
 
-RESQ-AI is an autonomous disaster response simulator modeling emergency response scenarios (floods, earthquakes) across an urban grid. The system incorporates AI-driven rescue agents, dynamic road obstructions, civilian triage, shelter allocation, and resource logistics.
+RESQ-AI is an autonomous disaster response simulator modeling emergency operations (floods, earthquakes) across an urban grid. The system incorporates AI-driven rescue agents, dynamic road obstructions, civilian triage, shelter allocation, and resource logistics.
 
-This repository is developed incrementally across 8 phases. **Phase 2** establishes the deterministic 2D synthetic city environment, procedural road and building networks, numerical flood propagation, structural earthquake collapse and aftershocks, affected civilians, evacuation shelters, and complete simulation lifecycle controls.
+This repository is developed incrementally across 8 phases. **Phase 3** implements a deterministic, hazard-aware **A* Pathfinding and Dynamic Route Planning** engine integrated into the simulation lifecycle and interactive mission-control frontend.
 
 ---
 
-## 1. Phase 2 Scope & Capabilities
+## 1. Phase 3 Scope & Capabilities
 
-- **Synthetic City Grid (`CityGrid`)**:
-  - Configurable grid dimensions (5x5 to 100x100).
-  - Explicit terrain classifications: `ROAD`, `BUILDING`, `OPEN_GROUND`, `SHELTER`.
-  - Dynamic hazard conditions: `SAFE`, `FLOODED`, `DEBRIS_BLOCKED`, `DANGEROUS`.
-  - Realistic traversability constraints: buildings and deep water / debris piles are strictly non-traversable for road vehicles.
-- **Deterministic Procedural Generation**:
-  - Reproducible road grid networks, urban building blocks, open staging grounds, and safe elevated shelters.
-  - Reproducible random seed (`seed: int`) guaranteeing identical layout generation.
-- **Disaster Mechanics**:
-  - **Flood Propagation**: Inflow sources inject water; gravity and elevation head drive diffusion to 4-way orthogonal neighbors; solid buildings act as flood barriers; depth is bounded [0.0, 5.0m]; water >= 1.5m triggers impassable danger.
-  - **Earthquake Damage**: Seismic epicenter produces structural rubble spilling onto roads; distinct scheduled aftershocks deposit secondary debris; shelters are seismically reinforced.
-- **Civilians & Shelters**:
-  - Civilians with unique IDs, coordinates, triage status (`waiting`, `injured`, `trapped`, `rescued`), and urgency levels (`low`, `medium`, `high`, `critical`).
-  - Shelters with designated capacity and occupancy tracking on elevated ground.
-- **Complete Simulation Lifecycle API**:
-  - `GET /api/v1/simulation/scenarios`: Catalog of built-in scenarios.
-  - `GET /api/v1/simulation/state`: Idempotent state inspection (includes grid, civilians, shelters).
-  - `POST /api/v1/simulation/start`: Initialize seeded scenario and start engine.
-  - `POST /api/v1/simulation/tick`: Advance disaster by exactly one tick step (rejects if not running).
-  - `POST /api/v1/simulation/pause`: Pause running simulation.
-  - `POST /api/v1/simulation/resume`: Resume paused simulation.
-  - `POST /api/v1/simulation/reset`: Restore initial seeded state at tick 0.
-- **Built-in Scenarios**:
-  1. `flooded_neighborhood`: River surge and broken levees flooding residential streets.
-  2. `earthquake_district`: High-magnitude tremor collapsing structures and choking intersections.
-  3. `severe_mixed_district`: Compound hazard combining building debris and ruptured water mains.
+- **Optimal 4-Directional A* Pathfinding (`AStarPathfinder`)**:
+  - Independent, reusable algorithmic core operating over grid coordinates.
+  - Strictly 4-directional cardinal movement (Up, Down, Left, Right); no diagonal moves permitted.
+  - Manhattan distance heuristic ($|r_1 - r_2| + |c_1 - c_2|$), mathematically proven **admissible** and **consistent** given a minimum step cost $\ge 1.0$.
+  - Efficient priority queue (`heapq`) with stable monotonic tie-breaking guaranteeing deterministic route selection.
+  - Zero-cost, 1-step route handling when start equals goal on traversable cells.
+  - Meaningful, human-readable explanations when routes are blocked or unreachable.
+- **Movement Profiles & Hazard-Aware Costs**:
+  - **`ground_responder` (Rescue Vehicles)**:
+    - Safe Road: cost `1.0`
+    - Safe Open Ground: cost `1.2`
+    - Shelter Cell: cost `1.0`
+    - Flooded Water ($< 1.5$m) or Dangerous Water ($\ge 1.5$m): **Impassable** (vehicles avoid water hazards).
+    - Debris Blocked / Buildings: **Impassable**.
+  - **`on_foot` (Pedestrian Responders)**:
+    - Safe Road: cost `1.0`
+    - Safe Open Ground: cost `1.0`
+    - Shelter Cell: cost `1.0`
+    - Shallow Flooding ($< 1.5$m): **Passable with depth penalty** ($\text{cost} = 3.0 + 2.0 \times \text{water\_level}$).
+    - Dangerous Water ($\ge 1.5$m) or Debris Blocked / Buildings: **Impassable**.
+- **Dynamic Replanning**:
+  - Route planning requests (`POST /api/v1/simulation/route`) dynamically inspect the **current active simulation grid**.
+  - As flood waters spread or earthquake aftershocks produce new debris over simulation ticks, re-requesting the route automatically navigates around new hazards or reports unreachable status.
+  - Route calculation is strictly read-only: does **not** advance ticks or mutate simulation state.
+- **Interactive Mission Control UI**:
+  - Live 2D grid visualizer (`CityGridView`) displaying roads, buildings, open grounds, shelters, flooded cells, debris piles, start/goal markers, and highlighted A* path.
+  - Interactive route planner panel (`RoutePlanner`) with start/goal coordinate inputs, profile switcher, live telemetry (found status, path steps, total cost, expanded nodes), and coordinate inspection.
 
 ---
 
@@ -44,7 +45,7 @@ This repository is developed incrementally across 8 phases. **Phase 2** establis
 ### Frontend
 - **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript (Strict Mode)
-- **Styling**: Tailwind CSS (Dark Emergency Operations theme)
+- **Styling**: Tailwind CSS (Dark Mission Control theme)
 - **Linting**: ESLint (`eslint-config-next`)
 
 ### Backend
@@ -52,9 +53,6 @@ This repository is developed incrementally across 8 phases. **Phase 2** establis
 - **Server**: Uvicorn
 - **Validation**: Pydantic v2 & Pydantic Settings
 - **Testing**: Pytest & HTTPX (`fastapi.testclient.TestClient`)
-
-### Persistence (Planned for Phase 3+)
-- **Database**: SQLite (`resq_ai.db`)
 
 ---
 
@@ -70,85 +68,86 @@ RESQ-AI/
 │   │   │       │   ├── config.py
 │   │   │       │   ├── health.py
 │   │   │       │   ├── info.py
-│   │   │       │   └── simulation.py
+│   │   │       │   └── simulation.py        # Lifecycle & Route Planning endpoints
 │   │   │       └── router.py
 │   │   ├── core/
-│   │   │   └── config.py
-│   │   ├── models/
-│   │   │   └── persistence.py
+│   │   │   └── config.py                    # App configuration & settings
 │   │   ├── schemas/
-│   │   │   ├── environment.py       # Terrain, Hazard, GridCell, Civilian, Shelter, CityGrid
-│   │   │   ├── health.py
-│   │   │   ├── info.py
-│   │   │   └── simulation.py        # Lifecycle requests, TickResult, ScenarioInfo, SimulationState
+│   │   │   ├── environment.py               # CityGrid, GridCell, TerrainType, HazardState
+│   │   │   ├── route.py                     # RouteRequest, RouteResponse, MovementProfile
+│   │   │   └── simulation.py                # SimulationState, TickResult, ScenarioInfo
 │   │   ├── services/
-│   │   │   ├── simulation_service.py
+│   │   │   ├── simulation_service.py        # Service orchestrator
 │   │   │   └── simulation/
-│   │   │       ├── earthquake_model.py # Seismic collapse, debris, aftershocks
-│   │   │       ├── engine.py           # SimulationEngine lifecycle manager
-│   │   │       ├── flood_model.py      # Fluid diffusion & runoff model
-│   │   │       ├── grid_generator.py   # Procedural synthetic city builder
-│   │   │       └── scenarios.py        # Built-in scenario templates
+│   │   │       ├── earthquake_model.py      # Seismic collapse & aftershocks
+│   │   │       ├── engine.py                # SimulationEngine lifecycle manager
+│   │   │       ├── flood_model.py           # Fluid diffusion & runoff model
+│   │   │       ├── grid_generator.py        # Procedural synthetic city builder
+│   │   │       ├── pathfinding.py           # A* Pathfinding engine & heuristic
+│   │   │       └── scenarios.py             # Built-in scenario templates
 │   │   └── main.py
-│   ├── tests/
-│   │   ├── conftest.py
-│   │   ├── test_config.py
-│   │   ├── test_earthquake_model.py
-│   │   ├── test_flood_model.py
-│   │   ├── test_grid_generator.py
-│   │   ├── test_health.py
-│   │   ├── test_info.py
-│   │   ├── test_schemas.py
-│   │   ├── test_simulation.py
-│   │   ├── test_simulation_api.py
-│   │   └── test_simulation_engine.py
-│   ├── .env.example
-│   └── requirements.txt
+│   └── tests/
+│       ├── conftest.py                      # Engine state reset fixture
+│       ├── test_config.py
+│       ├── test_earthquake_model.py
+│       ├── test_flood_model.py
+│       ├── test_grid_generator.py
+│       ├── test_health.py
+│       ├── test_info.py
+│       ├── test_pathfinding.py              # A* algorithm unit tests
+│       ├── test_route_api.py                # Route API & dynamic replanning tests
+│       ├── test_schemas.py
+│       ├── test_simulation.py
+│       ├── test_simulation_api.py
+│       └── test_simulation_engine.py
 ├── frontend/
 │   ├── app/
-│   │   ├── globals.css
 │   │   ├── layout.tsx
-│   │   └── page.tsx
+│   │   └── page.tsx                         # Mission Control Console
 │   ├── components/
+│   │   ├── CityGridView.tsx                 # 2D Grid & Path Overlay Visualizer
 │   │   ├── ConfigCard.tsx
 │   │   ├── ConnectionBanner.tsx
 │   │   ├── Header.tsx
 │   │   ├── ProjectStatusCard.tsx
+│   │   ├── RoutePlanner.tsx                 # A* Route Planning Controls
 │   │   ├── SimulationControls.tsx
 │   │   └── SimulationStateCard.tsx
 │   ├── lib/
-│   │   └── api.ts
-│   ├── types/
-│   │   └── api.ts
-│   ├── .env.example
-│   └── package.json
+│   │   └── api.ts                           # Typed HTTP client
+│   └── types/
+│       └── api.ts                           # TypeScript schema mirrors
 ├── docs/
 │   ├── api-contract.md
 │   └── architecture.md
-├── .gitignore
 └── README.md
 ```
 
 ---
 
-## 4. Getting Started (Windows PowerShell)
+## 4. Getting Started & Execution
 
-Open two separate PowerShell terminal windows.
+### Prerequisites
+- Python 3.12+ (in `backend/.venv`)
+- Node.js 18+ & npm (in `frontend/`)
+
+---
 
 ### Terminal 1: Backend Setup & Execution
 
 ```powershell
-# Navigate to the project root
-cd c:\Users\Lenovo\Codes\RESQ-AI
+# Navigate to the backend directory
+cd c:\Users\Lenovo\Codes\RESQ-AI\backend
 
-# Activate virtual environment
-.\backend\.venv\Scripts\Activate.ps1
+# Activate the virtual environment
+.\.venv\Scripts\Activate.ps1
 
-# Start FastAPI development server
-python -m uvicorn app.main:app --app-dir backend --reload --port 8000
+# Run the FastAPI server with auto-reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
-Backend will be available at:
-- Root: `http://localhost:8000`
+
+Backend endpoints will be available at:
+- Root API: `http://localhost:8000`
 - Interactive OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
@@ -162,76 +161,88 @@ cd c:\Users\Lenovo\Codes\RESQ-AI\frontend
 # Run Next.js development server
 npm run dev -- --port 3000
 ```
-Frontend dashboard will be available at:
+
+Frontend mission control dashboard will be available at:
 - `http://localhost:3000`
 
 ---
 
-## 5. Practical PowerShell Testing Examples
-
-You can test the simulation engine directly from PowerShell:
-
-```powershell
-# 1. Inspect available built-in scenarios
-Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/scenarios | ConvertTo-Json
-
-# 2. Start Flooded Neighborhood scenario
-$body = @{ scenario_id = "flooded_neighborhood"; seed = 101 } | ConvertTo-Json
-$state = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/start -Method Post -Body $body -ContentType "application/json"
-$state.status # returns "running"
-$state.current_tick # returns 0
-
-# 3. Advance simulation by one tick
-$tickResult = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/tick -Method Post
-$tickResult.current_tick # returns 1
-$tickResult.events # returns narrative events describing flood spreading
-
-# 4. Pause simulation
-Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/pause -Method Post
-
-# 5. Attempting to tick while paused is rejected with 400
-try {
-    Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/tick -Method Post
-} catch {
-    Write-Host "Correctly rejected: $($_.Exception.Message)"
-}
-
-# 6. Resume and reset
-Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/resume -Method Post
-Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/reset -Method Post
-```
-
----
-
-## 6. Running Tests
+## 5. Testing & Verification
 
 ### Backend Automated Test Suite
 From the project root:
 ```powershell
 .\backend\.venv\Scripts\pytest.exe backend/tests -v
 ```
-*(All 35 tests pass with 100% coverage across environment models, flood diffusion, earthquake rubble, scenarios, engine lifecycle, and API endpoints).*
+*(All 55 tests pass with 100% success across pathfinding optimality, heuristic admissibility, hazard costs, route APIs, dynamic replanning, simulation lifecycle, and environment models).*
 
-### Frontend Lint & Production Build Verification
+### Frontend Verification
 From `frontend/`:
 ```powershell
 npm run lint
 npm run build
 ```
+*(Zero ESLint warnings or errors; production build compiles cleanly).*
 
 ---
 
-## 7. Known Limitations & Simplifications (Phase 2)
-- **Single Active Session**: The engine maintains one in-memory active simulation at a time in local development.
-- **Synthetic Physics**: Flood propagation models cellular gravity head diffusion rather than Navier-Stokes hydrodynamic equations; earthquakes generate static rubble and scheduled aftershocks.
-- **Rescue Responders & Pathfinding**: Rescue units and A* routing are part of subsequent phases (Phase 3 & Phase 4). Civilians are modeled at their hazard locations and their health degrades in deep flooding, ready for responder agents.
+## 6. Practical PowerShell Testing Examples
+
+### 1. Initialize Scenario and Request an A* Route
+```powershell
+# Start scenario
+$body = @{ scenario_id = "flooded_neighborhood"; seed = 101 } | ConvertTo-Json
+Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/start -Method Post -Body $body -ContentType "application/json"
+
+# Request optimal ground responder route
+$routeBody = @{
+    start = @{ row = 0; col = 0 }
+    goal = @{ row = 5; col = 5 }
+    movement_profile = "ground_responder"
+} | ConvertTo-Json
+
+$res = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/route -Method Post -Body $routeBody -ContentType "application/json"
+Write-Host "Found: $($res.found) | Length: $($res.path_length) | Cost: $($res.total_cost) | Nodes: $($res.expanded_nodes)"
+```
+
+### 2. Observe Dynamic Route Replanning Across Ticks
+```powershell
+# Advance simulation by 3 ticks to expand flood water
+1..3 | ForEach-Object {
+    Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/tick -Method Post | Out-Null
+}
+
+# Request the route again: algorithm dynamically discovers alternate detours around newly flooded cells
+$resAfterTick = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/route -Method Post -Body $routeBody -ContentType "application/json"
+Write-Host "Updated Route Found: $($resAfterTick.found) | Cost: $($resAfterTick.total_cost)"
+```
+
+### 3. Test Blocked / Unreachable Destination
+```powershell
+# Request route to a building cell (e.g. row 1, col 1 in standard procedural block)
+$blockedBody = @{
+    start = @{ row = 0; col = 0 }
+    goal = @{ row = 1; col = 1 }
+    movement_profile = "ground_responder"
+} | ConvertTo-Json
+
+$blockedRes = Invoke-RestMethod -Uri http://localhost:8000/api/v1/simulation/route -Method Post -Body $blockedBody -ContentType "application/json"
+Write-Host "Found: $($blockedRes.found) | Reason: $($blockedRes.reason)"
+```
+
+---
+
+## 7. Known Limitations & Simplifications (Phase 3)
+
+- **Static Planning Scope**: Phase 3 calculates optimal routes and displays them visually. Autonomous agent movement along these paths is explicitly scheduled for Phase 4.
+- **Single In-Memory Session**: The server maintains one active in-memory simulation engine for local development.
+- **No Diagonal Movement**: Movement is strictly 4-directional to maintain realistic urban street navigation and predictable obstacle avoidance.
 
 ---
 
 ## 8. Planned Future Phases
-- **Phase 3**: Civilian Distress Beacon Generation, Urgency Countdown, Triage Levels.
-- **Phase 4**: Heterogeneous Rescue Agent Fleet (Boats, Drones, Ambulances).
-- **Phase 5**: A* / Dynamic Navigation around Damaged Obstacles.
-- **Phase 6**: Task Allocation & Heuristic Dispatch AI.
-- **Phase 7**: Shelter Capacity Management & Medical Depot Restock.
-- **Phase 8**: Real-time Analytics, Replay Controller, and Survival Metrics.
+- **Phase 4**: Heterogeneous Rescue Agent Fleet (Ambulances, Boats, Drones) & Autonomous Path Following.
+- **Phase 5**: Dynamic Multi-Agent Collision Avoidance & Priority Traffic Protocols.
+- **Phase 6**: Task Allocation & AI Dispatch Heuristics (Civilian Triage Assignment).
+- **Phase 7**: Shelters, Depots & Resource Logistics (Fuel, Medical Supplies).
+- **Phase 8**: Real-time Analytics, Simulation Replay Controller, and Survival Metrics.

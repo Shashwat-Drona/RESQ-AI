@@ -7,6 +7,8 @@ import { ProjectStatusCard } from "@/components/ProjectStatusCard";
 import { SimulationStateCard } from "@/components/SimulationStateCard";
 import { ConfigCard } from "@/components/ConfigCard";
 import { SimulationControls } from "@/components/SimulationControls";
+import { CityGridView } from "@/components/CityGridView";
+import { RoutePlanner } from "@/components/RoutePlanner";
 import {
   API_BASE_URL,
   getAppInfo,
@@ -17,7 +19,9 @@ import {
 } from "@/lib/api";
 import {
   AppInfoResponse,
+  Coordinate,
   HealthResponse,
+  RouteResponse,
   ScenarioInfo,
   SimulationConfig,
   SimulationState,
@@ -30,6 +34,11 @@ export default function HomePage() {
   const [simulationState, setSimulationState] =
     useState<SimulationState | null>(null);
   const [scenarios, setScenarios] = useState<ScenarioInfo[]>([]);
+
+  // Phase 3 Route Planning State
+  const [currentRoute, setCurrentRoute] = useState<RouteResponse | null>(null);
+  const [startCoord, setStartCoord] = useState<Coordinate>({ row: 0, col: 0 });
+  const [goalCoord, setGoalCoord] = useState<Coordinate>({ row: 19, col: 19 });
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +127,7 @@ export default function HomePage() {
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase={appInfo?.phase || "Phase 2: Disaster Environment & Simulation Engine"}
+        phase={appInfo?.phase || "Phase 3: A* Pathfinding & Dynamic Route Planning"}
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -135,7 +144,7 @@ export default function HomePage() {
           isLoading={isLoading}
         />
 
-        {/* Phase 2 Interactive Controls */}
+        {/* Phase 2 Simulation Lifecycle Controls */}
         <SimulationControls
           scenarios={scenarios}
           simulationState={simulationState}
@@ -144,6 +153,29 @@ export default function HomePage() {
             setLastChecked(new Date());
           }}
           isLoading={isLoading}
+        />
+
+        {/* Phase 3 Live 2D Grid & Route Visualizer */}
+        <CityGridView
+          grid={simulationState?.grid}
+          route={currentRoute}
+          startCoord={startCoord}
+          goalCoord={goalCoord}
+          onSetStart={(coord) => setStartCoord(coord)}
+          onSetGoal={(coord) => setGoalCoord(coord)}
+        />
+
+        {/* Phase 3 A* Route Planner Controls */}
+        <RoutePlanner
+          gridRows={simulationState?.grid?.rows ?? 20}
+          gridCols={simulationState?.grid?.cols ?? 20}
+          startCoord={startCoord}
+          goalCoord={goalCoord}
+          onSetStart={(coord) => setStartCoord(coord)}
+          onSetGoal={(coord) => setGoalCoord(coord)}
+          onRouteCalculated={(route) => setCurrentRoute(route)}
+          currentRoute={currentRoute}
+          isSimulationActive={!!simulationState?.grid}
         />
 
         {/* Dashboard Telemetry Grid */}
@@ -158,10 +190,10 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-800">
             <div>
               <h3 className="text-sm font-semibold text-slate-200">
-                Phase 2 Disaster Engine &amp; API Pipeline
+                Phase 3 A* Pathfinding &amp; Disaster Simulation Engine Pipeline
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Deterministic 2D synthetic city environment with flood propagation, earthquake debris, and lifecycle controls.
+                Deterministic 4-directional heuristic routing, hazard-aware movement cost matrix, and dynamic replanning across active disaster ticks.
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
@@ -170,7 +202,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-xs font-mono">
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
               <div className="text-slate-400 text-[10px]">SCENARIOS CATALOG</div>
               <div className="text-cyan-400 font-semibold mt-1">
@@ -180,7 +212,7 @@ export default function HomePage() {
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
-              <div className="text-slate-400 text-[10px]">SCENARIO INITIALIZATION</div>
+              <div className="text-slate-400 text-[10px]">SCENARIO INIT</div>
               <div className="text-emerald-400 font-semibold mt-1">
                 POST /api/v1/simulation/start
               </div>
@@ -193,6 +225,14 @@ export default function HomePage() {
                 POST /api/v1/simulation/tick
               </div>
               <div className="text-[10px] text-slate-400 mt-1">Step disaster (+1)</div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+              <div className="text-slate-400 text-[10px]">A* ROUTE PLANNER</div>
+              <div className="text-purple-400 font-semibold mt-1">
+                POST /api/v1/simulation/route
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Dynamic heuristic path</div>
             </div>
 
             <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">

@@ -2,6 +2,7 @@
 
 from typing import List
 from fastapi import APIRouter, HTTPException, status
+from app.schemas.route import RouteRequest, RouteResponse
 from app.schemas.simulation import (
     ScenarioInfo,
     SimulationState,
@@ -97,3 +98,23 @@ async def resume_simulation() -> SimulationState:
 async def reset_simulation() -> SimulationState:
     """Reset the current simulation back to tick 0 using original configuration and seed."""
     return SimulationService.reset_simulation()
+
+
+@router.post(
+    "/simulation/route",
+    response_model=RouteResponse,
+    summary="Plan optimal A* route on the active city grid",
+    responses={
+        400: {"description": "Simulation not initialized or no active grid available"},
+        422: {"description": "Validation error for invalid coordinate payload"},
+    },
+)
+async def plan_simulation_route(payload: RouteRequest) -> RouteResponse:
+    """Evaluate optimal A* route between two coordinates on the active environment grid."""
+    try:
+        return SimulationService.plan_route(payload)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(err),
+        )

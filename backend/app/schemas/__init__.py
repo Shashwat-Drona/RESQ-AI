@@ -12,6 +12,11 @@ from app.schemas.environment import (
 )
 from app.schemas.health import HealthResponse
 from app.schemas.info import AppInfoResponse
+from app.schemas.route import (
+    MovementProfile,
+    RouteRequest,
+    RouteResponse,
+)
 from app.schemas.simulation import (
     Coordinate,
     DisasterType,
@@ -42,4 +47,7 @@ __all__ = [
     "Civilian",
     "Shelter",
     "CityGrid",
+    "MovementProfile",
+    "RouteRequest",
+    "RouteResponse",
 ]
