@@ -43,6 +43,19 @@ BUILTIN_SCENARIOS: Dict[str, ScenarioInfo] = {
         recommended_cols=20,
         civilian_count=12,
     ),
+    "triage_benchmark_challenge": ScenarioInfo(
+        id="triage_benchmark_challenge",
+        name="Triage Evaluation Challenge (High Acuity)",
+        description=(
+            "Designed benchmark challenge featuring high-acuity deteriorating victims and progressive hazards, "
+            "evaluating intelligent multi-factor triage prioritization against naive FIFO dispatch."
+        ),
+        disaster_type=DisasterType.FLOOD,
+        default_seed=101,
+        recommended_rows=20,
+        recommended_cols=20,
+        civilian_count=8,
+    ),
 }
 
 

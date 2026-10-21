@@ -134,11 +134,10 @@ class SimulationEvaluator:
     def evaluate(cls, request: EvaluationRequest) -> EvaluationResponse:
         """Run complete comparative evaluation between AI Triage and Baseline FIFO strategies."""
         # 1. Determine scenario list and seeds
-        scenarios_to_evaluate: List[str] = (
-            [request.scenario_id]
-            if request.scenario_id
-            else ["flash_flood_riverside", "earthquake_district"]
-        )
+        if request.scenario_id and request.scenario_id not in ("all", "default"):
+            scenarios_to_evaluate = [request.scenario_id]
+        else:
+            scenarios_to_evaluate = ["triage_benchmark_challenge", "flooded_neighborhood"]
         seeds_to_evaluate: List[int] = request.seeds or [42, 101]
         max_ticks = request.max_ticks
 

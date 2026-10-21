@@ -6,9 +6,11 @@ from app.schemas.environment import (
     CityGrid,
     Civilian,
     CivilianStatus,
+    Coordinate,
     GridCell,
     HazardState,
     Shelter,
+    TerrainType,
     UrgencyLevel,
 )
 from app.schemas.simulation import (
@@ -156,6 +158,64 @@ class SimulationEngine:
             num_shelters=2,
             seed=self.seed,
         )
+
+        if self.scenario_id == "triage_benchmark_challenge":
+            # Reposition shelters for accessible multi-trip evaluation
+            self.shelters = [
+                Shelter(id="shelter_1", name="Riverside Evac Base", coordinate=Coordinate(row=4, col=4), capacity=20, current_occupancy=0),
+                Shelter(id="shelter_2", name="Highland Relief Center", coordinate=Coordinate(row=14, col=14), capacity=20, current_occupancy=0),
+            ]
+            for s in self.shelters:
+                scell = self.grid.cells[s.coordinate.row][s.coordinate.col]
+                scell.terrain = TerrainType.SHELTER
+                scell.hazard = HazardState.SAFE
+                scell.water_level = 0.0
+                scell.traversable = True
+
+            # Calibrate 8 civilians:
+            # civ_1, civ_2, civ_3: LOW urgency (healthy, safe in dry south-west corner far away from shelters)
+            # civ_4, civ_5: MEDIUM urgency (injured, health 75)
+            # civ_6, civ_7, civ_8: CRITICAL urgency trapped near advancing water with health 55
+            if len(self.civilians) >= 8:
+                self.civilians[0].coordinate = Coordinate(row=18, col=2)
+                self.civilians[0].urgency = UrgencyLevel.LOW
+                self.civilians[0].status = CivilianStatus.WAITING
+                self.civilians[0].health = 100
+
+                self.civilians[1].coordinate = Coordinate(row=19, col=3)
+                self.civilians[1].urgency = UrgencyLevel.LOW
+                self.civilians[1].status = CivilianStatus.WAITING
+                self.civilians[1].health = 100
+
+                self.civilians[2].coordinate = Coordinate(row=17, col=4)
+                self.civilians[2].urgency = UrgencyLevel.LOW
+                self.civilians[2].status = CivilianStatus.WAITING
+                self.civilians[2].health = 100
+
+                self.civilians[3].coordinate = Coordinate(row=10, col=10)
+                self.civilians[3].urgency = UrgencyLevel.MEDIUM
+                self.civilians[3].status = CivilianStatus.INJURED
+                self.civilians[3].health = 75
+
+                self.civilians[4].coordinate = Coordinate(row=11, col=12)
+                self.civilians[4].urgency = UrgencyLevel.MEDIUM
+                self.civilians[4].status = CivilianStatus.INJURED
+                self.civilians[4].health = 75
+
+                self.civilians[5].coordinate = Coordinate(row=5, col=8)
+                self.civilians[5].urgency = UrgencyLevel.CRITICAL
+                self.civilians[5].status = CivilianStatus.TRAPPED
+                self.civilians[5].health = 55
+
+                self.civilians[6].coordinate = Coordinate(row=7, col=6)
+                self.civilians[6].urgency = UrgencyLevel.CRITICAL
+                self.civilians[6].status = CivilianStatus.TRAPPED
+                self.civilians[6].health = 55
+
+                self.civilians[7].coordinate = Coordinate(row=12, col=15)
+                self.civilians[7].urgency = UrgencyLevel.CRITICAL
+                self.civilians[7].status = CivilianStatus.TRAPPED
+                self.civilians[7].health = 55
 
         # 3. Setup Disaster Mechanics
         init_events: List[str] = [
