@@ -163,16 +163,16 @@ export function RescuePriorityQueue({
     selectedCivilianId === item.civilian_id;
 
   return (
-    <section className="rounded-xl border border-slate-800/80 bg-[#11141D]/90 p-5 space-y-5">
+    <section className="rounded-2xl glass-panel p-5 space-y-5 relative overflow-hidden">
       {/* Header and Telemetry */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3.5 border-b border-white/[0.07]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-sm">🎯</span>
-            <h3 className="text-base font-semibold text-slate-100">
-              Civilian Triage Queue
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+            <h3 className="text-sm font-bold text-slate-100 tracking-wide">
+              CIVILIAN TRIAGE PRIORITY QUEUE
             </h3>
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800/70 text-slate-300 border border-slate-700/60">
+            <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-950/60 text-cyan-300 border border-cyan-800/50">
               Tick {priorities.current_tick}
             </span>
           </div>
@@ -182,9 +182,9 @@ export function RescuePriorityQueue({
         </div>
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="w-2.5 h-2.5 rounded-full border-2 border-rose-400 border-t-transparent animate-spin" />
-            <span>Updating triage...</span>
+          <div className="flex items-center gap-2 text-xs text-cyan-300 font-mono">
+            <span className="w-2.5 h-2.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+            <span>Recalculating triage...</span>
           </div>
         )}
       </div>
@@ -192,38 +192,38 @@ export function RescuePriorityQueue({
       {/* Clean 4-Card Summary Strip (Decluttered, zero overlapping) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {/* Card 1: Active In Queue */}
-        <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80">
+        <div className="p-3.5 rounded-xl glass-card">
           <div className="text-[11px] font-medium text-slate-400">Awaiting Rescue</div>
-          <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xl font-bold font-mono text-white">{summary.active_unrescued}</span>
-            <span className="text-xs text-slate-500 font-mono">/ {summary.total_civilians} total</span>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-2xl font-extrabold font-mono text-white tracking-tight">{summary.active_unrescued}</span>
+            <span className="text-xs text-slate-400 font-mono">/ {summary.total_civilians} total</span>
           </div>
         </div>
 
         {/* Card 2: Critical Care */}
-        <div className="p-3 rounded-lg bg-slate-950/60 border border-rose-900/40">
-          <div className="text-[11px] font-medium text-rose-400">Critical Priority</div>
-          <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xl font-bold font-mono text-rose-400">{summary.critical_count}</span>
-            <span className="text-xs text-slate-500">urgent</span>
+        <div className="p-3.5 rounded-xl glass-card hover:border-rose-500/50 hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+          <div className="text-[11px] font-semibold text-rose-400">Critical Priority</div>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-2xl font-extrabold font-mono text-rose-400 tracking-tight">{summary.critical_count}</span>
+            <span className="text-xs text-rose-300/80 font-mono">urgent</span>
           </div>
         </div>
 
         {/* Card 3: Trapped Victims */}
-        <div className="p-3 rounded-lg bg-slate-950/60 border border-amber-900/40">
-          <div className="text-[11px] font-medium text-amber-400">Trapped In Hazard</div>
-          <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xl font-bold font-mono text-amber-400">{summary.trapped_count}</span>
-            <span className="text-xs text-slate-500">blocked</span>
+        <div className="p-3.5 rounded-xl glass-card hover:border-amber-500/50 hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+          <div className="text-[11px] font-semibold text-amber-400">Trapped In Hazard</div>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-2xl font-extrabold font-mono text-amber-400 tracking-tight">{summary.trapped_count}</span>
+            <span className="text-xs text-amber-300/80 font-mono">blocked</span>
           </div>
         </div>
 
         {/* Card 4: Safely Evacuated */}
-        <div className="p-3 rounded-lg bg-slate-950/60 border border-emerald-900/40">
-          <div className="text-[11px] font-medium text-emerald-400">Safely Evacuated</div>
-          <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-xl font-bold font-mono text-emerald-400">{summary.rescued_count}</span>
-            <span className="text-xs text-emerald-600/90 font-mono">
+        <div className="p-3.5 rounded-xl glass-card hover:border-emerald-500/50 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+          <div className="text-[11px] font-semibold text-emerald-400">Safely Evacuated</div>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-2xl font-extrabold font-mono text-emerald-300 tracking-tight">{summary.rescued_count}</span>
+            <span className="text-xs text-emerald-400/80 font-mono">
               ({summary.total_civilians > 0 ? Math.round((summary.rescued_count / summary.total_civilians) * 100) : 0}%)
             </span>
           </div>
@@ -231,16 +231,16 @@ export function RescuePriorityQueue({
       </div>
 
       {/* Streamlined Single-Row Filter Toolbar */}
-      <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 text-xs">
+      <div className="p-2.5 rounded-xl glass-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 text-xs">
         {/* Search Input */}
         <div className="relative flex-1 min-w-[160px]">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
           <input
             type="text"
             placeholder="Search civilian ID (e.g. CIV_6) or coord..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 text-slate-200 placeholder-slate-500 text-xs rounded-md pl-7 pr-2.5 py-1.5 focus:border-blue-500 focus:outline-hidden"
+            className="w-full bg-slate-950/80 border border-slate-700/80 text-slate-100 placeholder-slate-500 text-xs rounded-lg pl-8 pr-3 py-1.5 focus:border-cyan-400 focus:outline-hidden transition-all"
           />
         </div>
 
@@ -250,7 +250,7 @@ export function RescuePriorityQueue({
           <select
             value={urgencyFilter}
             onChange={(e) => setUrgencyFilter(e.target.value as UrgencyFilter)}
-            className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-md px-2.5 py-1.5 focus:border-blue-500 outline-hidden cursor-pointer"
+            className="bg-slate-950/80 border border-slate-700/80 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:border-cyan-400 outline-hidden cursor-pointer transition-all"
             aria-label="Filter by urgency"
           >
             <option value="all">All Urgencies</option>
@@ -264,7 +264,7 @@ export function RescuePriorityQueue({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-md px-2.5 py-1.5 focus:border-blue-500 outline-hidden cursor-pointer"
+            className="bg-slate-950/80 border border-slate-700/80 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:border-cyan-400 outline-hidden cursor-pointer transition-all"
             aria-label="Filter by status"
           >
             <option value="all">All Statuses</option>
@@ -277,7 +277,7 @@ export function RescuePriorityQueue({
           <select
             value={sortOption}
             onChange={(e) => setSortOption(e.target.value as SortOption)}
-            className="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-md px-2.5 py-1.5 focus:border-blue-500 outline-hidden cursor-pointer"
+            className="bg-slate-950/80 border border-slate-700/80 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:border-cyan-400 outline-hidden cursor-pointer transition-all"
             aria-label="Sort queue"
           >
             <option value="rank_asc">Priority Rank (#1 first)</option>
@@ -295,19 +295,19 @@ export function RescuePriorityQueue({
             Ranked Rescue Candidates ({displayedItems.length}{" "}
             {displayedItems.length !== queue.length && `filtered from ${queue.length}`})
           </span>
-          <span className="text-[11px] text-slate-500 hidden sm:inline">
+          <span className="text-[11px] text-cyan-400/80 font-mono hidden sm:inline">
             Click candidate to locate on grid
           </span>
         </div>
 
         {displayedItems.length === 0 ? (
-          <div className="p-6 text-center rounded-lg bg-slate-950/60 border border-slate-800 text-xs text-slate-400">
+          <div className="p-6 text-center rounded-xl glass-card text-xs text-slate-400">
             {queue.length === 0
               ? "All civilians have been evacuated safely to shelters!"
               : "No candidates match the active filters."}
           </div>
         ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
             {displayedItems.map((item) => {
               const selected = isSelected(item);
               const isExpanded = expandedItemId === item.civilian_id;
@@ -316,10 +316,10 @@ export function RescuePriorityQueue({
                 <div
                   key={item.civilian_id}
                   onClick={() => onSelectCivilian?.(item.coordinate, item.civilian_id)}
-                  className={`p-3 rounded-lg border transition-all cursor-pointer ${
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                     selected
-                      ? "bg-blue-950/20 border-blue-500 ring-1 ring-blue-500/50 shadow-md"
-                      : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/40"
+                      ? "bg-cyan-950/25 border-cyan-400 ring-1 ring-cyan-400/60 shadow-[0_0_20px_rgba(6,182,212,0.25)]"
+                      : "glass-card hover:border-cyan-500/40"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

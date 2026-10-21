@@ -99,14 +99,8 @@ export function SimulationControls({
         try {
           const result = await stepTick();
           onStateUpdate(result.state);
-          if (result.state.status !== "running") {
-            setIsAutoPlaying(false);
-            if (autoPlayTimerRef.current) {
-              clearInterval(autoPlayTimerRef.current);
-              autoPlayTimerRef.current = null;
-            }
-          }
-        } catch {
+        } catch (err: unknown) {
+          setErrorMsg(err instanceof Error ? err.message : String(err));
           setIsAutoPlaying(false);
           if (autoPlayTimerRef.current) {
             clearInterval(autoPlayTimerRef.current);
@@ -149,13 +143,13 @@ export function SimulationControls({
   };
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-slate-800">
+    <section className="rounded-2xl glass-panel p-5 relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-white/[0.07]">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <h2 className="text-sm font-semibold text-slate-100">
-              Tactical Simulation Controls
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+            <h2 className="text-sm font-bold text-slate-100 tracking-wide">
+              TACTICAL SIMULATION CONTROLS
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -165,17 +159,17 @@ export function SimulationControls({
 
         {/* Status & Tick Pill */}
         <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="text-slate-400">Simulation Tick:</span>
-          <span className="px-2.5 py-0.5 rounded bg-slate-950 text-cyan-300 font-bold border border-slate-800">
+          <span className="text-slate-400">Current Tick:</span>
+          <span className="px-3 py-1 rounded-full bg-slate-950/80 text-cyan-300 font-bold border border-cyan-800/40 shadow-[0_0_10px_rgba(6,182,212,0.15)]">
             {currentTick}
           </span>
           <span
-            className={`px-2.5 py-0.5 rounded border uppercase text-[11px] font-bold ${
+            className={`px-3 py-1 rounded-full border uppercase text-[11px] font-bold ${
               isRunning
-                ? "bg-emerald-950/80 text-emerald-400 border-emerald-700/80"
+                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-pulse"
                 : isPaused
-                ? "bg-amber-950/80 text-amber-400 border-amber-700/80"
-                : "bg-slate-950 text-slate-400 border-slate-800"
+                ? "bg-amber-500/10 text-amber-300 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                : "bg-slate-900/80 text-slate-400 border-slate-800"
             }`}
           >
             {status}
@@ -184,7 +178,7 @@ export function SimulationControls({
       </div>
 
       {errorMsg && (
-        <div className="mt-3.5 p-3 rounded-lg bg-rose-950/60 border border-rose-800/80 text-xs text-rose-300 flex items-center justify-between">
+        <div className="mt-3.5 p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-xs text-rose-300 flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.2)]">
           <span>⚠️ {errorMsg}</span>
           <button
             type="button"
@@ -207,7 +201,7 @@ export function SimulationControls({
             value={selectedScenario}
             onChange={(e) => setSelectedScenario(e.target.value)}
             disabled={isLoading || actionLoading || isAutoPlaying}
-            className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-700 text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
+            className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/80 border border-slate-700/80 text-slate-200 focus:outline-hidden focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 cursor-pointer transition-all"
           >
             {scenarios.map((sc) => (
               <option key={sc.id} value={sc.id}>
@@ -227,7 +221,7 @@ export function SimulationControls({
             value={seed}
             onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
             disabled={isLoading || actionLoading || isAutoPlaying}
-            className="w-full px-3 py-2 text-xs rounded-lg bg-slate-950 border border-slate-700 text-slate-200 focus:outline-none focus:border-emerald-500 font-mono"
+            className="w-full px-3 py-2 text-xs rounded-xl bg-slate-950/80 border border-slate-700/80 text-slate-200 focus:outline-hidden focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 font-mono transition-all"
           />
         </div>
 
@@ -238,7 +232,7 @@ export function SimulationControls({
             type="button"
             onClick={handleStart}
             disabled={isLoading || actionLoading}
-            className="flex-1 min-w-[120px] px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer shadow-sm"
+            className="flex-1 min-w-[125px] px-4 py-2 text-xs font-bold rounded-xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white transition-all transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 cursor-pointer shadow-[0_0_20px_rgba(6,182,212,0.35)]"
           >
             {actionLoading ? "Processing..." : "Start Scenario"}
           </button>
@@ -248,11 +242,11 @@ export function SimulationControls({
             type="button"
             onClick={handleTick}
             disabled={!isRunning || actionLoading || isAutoPlaying}
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-500 text-white transition-colors cursor-pointer flex items-center gap-1.5"
+            className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-slate-900/90 hover:bg-slate-800 active:bg-slate-950 border border-cyan-500/30 hover:border-cyan-400/60 disabled:border-slate-800 disabled:text-slate-600 text-cyan-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.1)]"
             title="Advance exactly one simulation tick"
           >
             <span>Step Tick</span>
-            <span className="font-mono text-[10px] bg-blue-800 px-1 rounded">+1</span>
+            <span className="font-mono text-[10px] bg-cyan-950 px-1.5 py-0.2 rounded border border-cyan-800 text-cyan-300 font-bold">+1</span>
           </button>
 
           {/* Continuous Auto-Play Button */}
@@ -260,14 +254,14 @@ export function SimulationControls({
             type="button"
             onClick={toggleAutoPlay}
             disabled={!isRunning || actionLoading}
-            className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
               isAutoPlaying
-                ? "bg-rose-950 text-rose-200 border-rose-700 animate-pulse"
-                : "bg-purple-950/80 text-purple-300 border-purple-700 hover:bg-purple-900/60"
+                ? "bg-rose-500/20 text-rose-200 border-rose-500/60 shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse"
+                : "bg-purple-950/60 text-purple-300 border-purple-700/60 hover:bg-purple-900/40 hover:border-purple-500/80 hover:shadow-[0_0_15px_rgba(168,85,247,0.3)]"
             }`}
             title="Automatically advance simulation ticks sequentially via backend requests"
           >
-            <span>{isAutoPlaying ? "⏹ Stop Playback" : "▶ Auto Play"}</span>
+            <span>{isAutoPlaying ? "⏹ Stop Play" : "▶ Auto Play"}</span>
           </button>
 
           {/* Pause / Resume Button */}
@@ -275,7 +269,7 @@ export function SimulationControls({
             type="button"
             onClick={handlePauseResume}
             disabled={status === "not_started" || actionLoading || isAutoPlaying}
-            className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+            className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900/90 hover:bg-slate-800 disabled:opacity-40 text-slate-300 border border-slate-700/80 transition-all cursor-pointer"
           >
             {isRunning ? "Pause" : "Resume"}
           </button>
@@ -286,14 +280,14 @@ export function SimulationControls({
               type="button"
               onClick={() => setShowResetConfirm(!showResetConfirm)}
               disabled={status === "not_started" || actionLoading || isAutoPlaying}
-              className="px-3 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 border border-slate-700 transition-colors cursor-pointer"
+              className="px-3 py-2 text-xs font-semibold rounded-xl bg-slate-900/90 hover:bg-slate-800 disabled:opacity-40 text-slate-300 border border-slate-700/80 transition-all cursor-pointer"
             >
               Reset
             </button>
 
             {showResetConfirm && (
-              <div className="absolute right-0 bottom-full mb-2 w-64 p-3 rounded-xl bg-slate-950 border border-slate-700 shadow-2xl z-20 text-xs">
-                <div className="font-bold text-slate-200">Reset to Tick 0?</div>
+              <div className="absolute right-0 bottom-full mb-2 w-64 p-3.5 rounded-xl glass-panel border border-slate-700 shadow-2xl z-20 text-xs">
+                <div className="font-bold text-slate-100">Reset to Tick 0?</div>
                 <p className="text-[11px] text-slate-400 mt-1">
                   This will restore the initial seeded environment and clear active missions.
                 </p>
@@ -301,14 +295,14 @@ export function SimulationControls({
                   <button
                     type="button"
                     onClick={() => setShowResetConfirm(false)}
-                    className="px-2 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer"
+                    className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={confirmReset}
-                    className="px-2 py-1 text-[11px] font-semibold rounded bg-rose-600 text-white hover:bg-rose-500 cursor-pointer"
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-600 text-white hover:bg-rose-500 cursor-pointer shadow-md"
                   >
                     Confirm Reset
                   </button>
@@ -321,10 +315,10 @@ export function SimulationControls({
 
       {/* Auto-Play Speed Controls */}
       {isAutoPlaying && (
-        <div className="mt-3 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs font-mono text-purple-300">
+        <div className="mt-3.5 pt-3 border-t border-white/[0.07] flex items-center justify-between text-xs font-mono text-purple-300">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
-            <span>Auto Playback Active (Requesting tick every {autoPlaySpeed / 1000}s)</span>
+            <span>Auto Playback Active (requesting tick every {autoPlaySpeed / 1000}s)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-slate-400 text-[11px]">Speed:</span>
@@ -333,10 +327,10 @@ export function SimulationControls({
                 key={speed}
                 type="button"
                 onClick={() => setAutoPlaySpeed(speed)}
-                className={`px-2 py-0.5 rounded text-[10px] cursor-pointer ${
+                className={`px-2.5 py-0.5 rounded-md text-[10px] cursor-pointer transition-colors ${
                   autoPlaySpeed === speed
-                    ? "bg-purple-800 text-white font-bold"
-                    : "bg-slate-950 text-slate-400 hover:text-slate-200"
+                    ? "bg-purple-600 text-white font-bold shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                    : "bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800"
                 }`}
               >
                 {speed / 1000}s
