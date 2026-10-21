@@ -147,7 +147,9 @@ export function StrategyEvaluationPanel({
             >
               <option value={15}>15 Ticks (Fast Evaluation)</option>
               <option value={25}>25 Ticks (Standard Trial)</option>
-              <option value={35}>35 Ticks (Extended Horizon)</option>
+              <option value={35}>35 Ticks (Initial Cycle)</option>
+              <option value={50}>50 Ticks (Extended Operations)</option>
+              <option value={65}>65 Ticks (Full Lifecycle)</option>
             </select>
           </div>
 
