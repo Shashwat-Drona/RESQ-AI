@@ -223,7 +223,13 @@ class SimulationEngine:
         ]
 
         if disaster_type == DisasterType.FLOOD:
-            sources = [(0, 0), (0, 1), (1, 0)]
+            # Ensure flood breach originates in river sectors rather than directly on the emergency vehicle shelter
+            shelter_coords = {(s.coordinate.row, s.coordinate.col) for s in self.shelters}
+            if any((r, c) in shelter_coords for r, c in [(0, 0), (0, 1), (1, 0)]):
+                sources = [(rows - 1, cols - 1), (rows - 1, cols - 2), (rows - 2, cols - 1)]
+            else:
+                sources = [(0, 0), (0, 1), (1, 0)]
+
             if self.scenario_id == "severe_mixed_district":
                 # Ruptured water main in urban center
                 sources.append((rows // 2, cols // 2))
