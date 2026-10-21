@@ -1,61 +1,66 @@
 "use client";
 
 import React, { useState } from "react";
-import { Coordinate, MovementProfile, RouteRequest, RouteResponse } from "@/types/api";
 import { planRoute } from "@/lib/api";
+import { Coordinate, MovementProfile, RouteResponse } from "@/types/api";
 
 interface RoutePlannerProps {
-  gridRows?: number;
-  gridCols?: number;
+  gridRows: number;
+  gridCols: number;
   startCoord: Coordinate;
   goalCoord: Coordinate;
   onSetStart: (coord: Coordinate) => void;
   onSetGoal: (coord: Coordinate) => void;
   onRouteCalculated: (route: RouteResponse | null) => void;
-  currentRoute: RouteResponse | null;
+  currentRoute?: RouteResponse | null;
   isSimulationActive: boolean;
 }
 
 export function RoutePlanner({
-  gridRows = 20,
-  gridCols = 20,
+  gridRows,
+  gridCols,
   startCoord,
   goalCoord,
   onSetStart,
   onSetGoal,
   onRouteCalculated,
-  currentRoute,
+  currentRoute: propCurrentRoute,
   isSimulationActive,
 }: RoutePlannerProps) {
   const [profile, setProfile] = useState<MovementProfile>("ground_responder");
-  const [isPlanning, setIsPlanning] = useState<boolean>(false);
+  const [isPlanning, setIsPlanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPathList, setShowPathList] = useState<boolean>(false);
+  const [localRoute, setLocalRoute] = useState<RouteResponse | null>(null);
+  const [showPathList, setShowPathList] = useState(false);
+
+  const currentRoute = propCurrentRoute !== undefined ? propCurrentRoute : localRoute;
 
   const handleCalculateRoute = async () => {
     if (!isSimulationActive) {
-      setError("Please start or initialize a simulation scenario first.");
+      setError("Please start or load a simulation before calculating paths.");
       return;
     }
 
     setIsPlanning(true);
     setError(null);
 
-    const payload: RouteRequest = {
-      start: { row: Number(startCoord.row), col: Number(startCoord.col) },
-      goal: { row: Number(goalCoord.row), col: Number(goalCoord.col) },
-      movement_profile: profile,
-    };
-
     try {
-      const res = await planRoute(payload);
-      onRouteCalculated(res);
-      if (!res.found && res.reason) {
-        setError(`Route not found: ${res.reason}`);
+      const response = await planRoute({
+        start: startCoord,
+        goal: goalCoord,
+        movement_profile: profile,
+      });
+
+      setLocalRoute(response);
+      onRouteCalculated(response);
+
+      if (!response.found) {
+        setError("No traversable route found. The goal may be impassable or isolated by hazards.");
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to calculate A* route.";
+      const msg = err instanceof Error ? err.message : "Route planning failed.";
       setError(msg);
+      setLocalRoute(null);
       onRouteCalculated(null);
     } finally {
       setIsPlanning(false);
@@ -63,31 +68,32 @@ export function RoutePlanner({
   };
 
   const handleClearRoute = () => {
+    setLocalRoute(null);
     onRouteCalculated(null);
     setError(null);
   };
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-800">
+    <section className="rounded-2xl glass-panel p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-sm">🧭</span>
-            <h3 className="text-base font-semibold text-slate-100">
+            <h3 className="text-base font-bold text-slate-900">
               A* Dynamic Route Planner
             </h3>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Hazard-aware Manhattan 4-directional A* routing with live environmental replanning.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
               isSimulationActive
-                ? "bg-emerald-950/60 text-emerald-400 border-emerald-800"
-                : "bg-slate-800 text-slate-400 border-slate-700"
+                ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                : "bg-slate-100 text-slate-500 border-slate-200"
             }`}
           >
             {isSimulationActive ? "Grid Ready" : "Simulation Inactive"}
@@ -99,13 +105,13 @@ export function RoutePlanner({
       <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Start Point */}
         <div className="space-y-3">
-          <label className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <label className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             Start Coordinate
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-[10px] text-slate-500 uppercase">Row (0..{gridRows - 1})</span>
+              <span className="text-[10px] text-slate-500 uppercase font-mono">Row (0..{gridRows - 1})</span>
               <input
                 type="number"
                 min={0}
@@ -115,11 +121,11 @@ export function RoutePlanner({
                   const val = parseInt(e.target.value) || 0;
                   onSetStart({ row: val, col: startCoord.col });
                 }}
-                className="w-full mt-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:border-blue-500 focus:outline-none"
+                className="w-full mt-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono focus:border-sky-500 focus:outline-hidden shadow-2xs"
               />
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 uppercase">Col (0..{gridCols - 1})</span>
+              <span className="text-[10px] text-slate-500 uppercase font-mono">Col (0..{gridCols - 1})</span>
               <input
                 type="number"
                 min={0}
@@ -129,7 +135,7 @@ export function RoutePlanner({
                   const val = parseInt(e.target.value) || 0;
                   onSetStart({ row: startCoord.row, col: val });
                 }}
-                className="w-full mt-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:border-blue-500 focus:outline-none"
+                className="w-full mt-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono focus:border-sky-500 focus:outline-hidden shadow-2xs"
               />
             </div>
           </div>
@@ -137,13 +143,13 @@ export function RoutePlanner({
 
         {/* Goal Point */}
         <div className="space-y-3">
-          <label className="text-xs font-semibold text-rose-400 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+          <label className="text-xs font-bold text-rose-700 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
             Goal Coordinate
           </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <span className="text-[10px] text-slate-500 uppercase">Row (0..{gridRows - 1})</span>
+              <span className="text-[10px] text-slate-500 uppercase font-mono">Row (0..{gridRows - 1})</span>
               <input
                 type="number"
                 min={0}
@@ -153,11 +159,11 @@ export function RoutePlanner({
                   const val = parseInt(e.target.value) || 0;
                   onSetGoal({ row: val, col: goalCoord.col });
                 }}
-                className="w-full mt-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:border-blue-500 focus:outline-none"
+                className="w-full mt-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono focus:border-sky-500 focus:outline-hidden shadow-2xs"
               />
             </div>
             <div>
-              <span className="text-[10px] text-slate-500 uppercase">Col (0..{gridCols - 1})</span>
+              <span className="text-[10px] text-slate-500 uppercase font-mono">Col (0..{gridCols - 1})</span>
               <input
                 type="number"
                 min={0}
@@ -167,7 +173,7 @@ export function RoutePlanner({
                   const val = parseInt(e.target.value) || 0;
                   onSetGoal({ row: goalCoord.row, col: val });
                 }}
-                className="w-full mt-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 font-mono focus:border-blue-500 focus:outline-none"
+                className="w-full mt-1 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-mono focus:border-sky-500 focus:outline-hidden shadow-2xs"
               />
             </div>
           </div>
@@ -175,13 +181,13 @@ export function RoutePlanner({
 
         {/* Movement Profile & Actions */}
         <div className="space-y-3">
-          <label className="text-xs font-semibold text-slate-300">
+          <label className="text-xs font-bold text-slate-700">
             Movement Profile
           </label>
           <select
             value={profile}
             onChange={(e) => setProfile(e.target.value as MovementProfile)}
-            className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-100 font-sans focus:border-blue-500 focus:outline-none"
+            className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-sans focus:border-sky-500 focus:outline-hidden shadow-2xs cursor-pointer"
           >
             <option value="ground_responder">Ground Responder (Vehicle)</option>
             <option value="on_foot">On Foot (Pedestrian)</option>
@@ -191,7 +197,7 @@ export function RoutePlanner({
             <button
               onClick={handleCalculateRoute}
               disabled={isPlanning || !isSimulationActive}
-              className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+              className="flex-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
             >
               {isPlanning ? (
                 <>
@@ -207,7 +213,7 @@ export function RoutePlanner({
             {currentRoute && (
               <button
                 onClick={handleClearRoute}
-                className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors"
+                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-all border border-slate-300 cursor-pointer shadow-2xs"
                 title="Clear route from map"
               >
                 Clear
@@ -219,7 +225,7 @@ export function RoutePlanner({
 
       {/* Error / Alert banner */}
       {error && (
-        <div className="mt-4 p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-xs text-rose-300 flex items-center gap-2">
+        <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
           <span className="font-bold">Notice:</span>
           <span>{error}</span>
         </div>
@@ -227,42 +233,42 @@ export function RoutePlanner({
 
       {/* Telemetry Result Summary */}
       {currentRoute && (
-        <div className="mt-5 pt-4 border-t border-slate-800/80">
+        <div className="mt-5 pt-4 border-t border-slate-200">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-              <div className="text-[10px] text-slate-400">STATUS</div>
-              <div className="mt-1 font-semibold">
+            <div className="p-3.5 rounded-xl glass-card">
+              <div className="text-[10px] text-slate-500 font-semibold">STATUS</div>
+              <div className="mt-1 font-bold">
                 {currentRoute.found ? (
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span className="text-emerald-700 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     Route Found
                   </span>
                 ) : (
-                  <span className="text-rose-400 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                  <span className="text-rose-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                     Unreachable
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-              <div className="text-[10px] text-slate-400">PATH LENGTH</div>
-              <div className="mt-1 font-mono text-cyan-400 font-semibold text-sm">
-                {currentRoute.path_length} <span className="text-[10px] text-slate-500">steps</span>
+            <div className="p-3.5 rounded-xl glass-card">
+              <div className="text-[10px] text-slate-500 font-semibold">PATH LENGTH</div>
+              <div className="mt-1 font-mono text-sky-700 font-bold text-sm">
+                {currentRoute.path_length} <span className="text-[10px] text-slate-500 font-normal">steps</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-              <div className="text-[10px] text-slate-400">TOTAL COST</div>
-              <div className="mt-1 font-mono text-amber-400 font-semibold text-sm">
+            <div className="p-3.5 rounded-xl glass-card">
+              <div className="text-[10px] text-slate-500 font-semibold">TOTAL COST</div>
+              <div className="mt-1 font-mono text-amber-700 font-bold text-sm">
                 {currentRoute.total_cost.toFixed(2)}
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
-              <div className="text-[10px] text-slate-400">EXPANDED NODES</div>
-              <div className="mt-1 font-mono text-purple-400 font-semibold text-sm">
+            <div className="p-3.5 rounded-xl glass-card">
+              <div className="text-[10px] text-slate-500 font-semibold">EXPANDED NODES</div>
+              <div className="mt-1 font-mono text-purple-700 font-bold text-sm">
                 {currentRoute.expanded_nodes}
               </div>
             </div>
@@ -273,16 +279,16 @@ export function RoutePlanner({
             <div className="mt-3">
               <button
                 onClick={() => setShowPathList(!showPathList)}
-                className="text-[11px] text-slate-400 hover:text-slate-200 underline font-mono cursor-pointer"
+                className="text-[11px] text-sky-700 hover:text-sky-900 underline font-mono cursor-pointer font-medium"
               >
                 {showPathList ? "Hide Path Coordinates" : `Inspect Ordered Coordinates (${currentRoute.path.length} points)`}
               </button>
               {showPathList && (
-                <div className="mt-2 p-2.5 rounded bg-slate-950 border border-slate-800 max-h-32 overflow-y-auto font-mono text-[11px] text-slate-300 flex flex-wrap gap-1.5">
+                <div className="mt-2 p-3 rounded-xl bg-slate-50 border border-slate-200 max-h-32 overflow-y-auto font-mono text-[11px] text-slate-700 flex flex-wrap gap-1.5">
                   {currentRoute.path.map((pt, idx) => (
                     <span
                       key={idx}
-                      className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800"
+                      className="px-1.5 py-0.5 rounded-md bg-white border border-slate-300 shadow-2xs"
                     >
                       {idx === 0
                         ? `S:(${pt.row},${pt.col})`

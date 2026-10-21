@@ -225,11 +225,11 @@ export default function HomePage() {
   const isSimulationActive = !!simulationState?.grid;
 
   return (
-    <div className="min-h-screen bg-[#090B10] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-800 flex flex-col font-sans selection:bg-sky-600 selection:text-white">
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
-        phase="Phase 8: Final Presentation & Benchmark Readiness"
+        phase="Phase 8: Presentation & Benchmark"
         isConnected={isConnected}
         isLoading={isLoading}
         onRetry={loadData}
@@ -254,21 +254,21 @@ export default function HomePage() {
         />
 
         {/* Top-Level Workspace Navigation Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-2.5 rounded-2xl shadow-lg">
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-panel p-2 rounded-2xl shadow-sm">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
             <button
               type="button"
               onClick={() => setActiveView("operations")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === "operations"
-                  ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_16px_rgba(6,182,212,0.25)]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                  ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <span>🚨</span>
               <span>Live Operations</span>
               {isSimulationActive && (
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.9)]" />
+                <span className="w-2 h-2 rounded-full bg-sky-500 animate-pulse shadow-[0_0_6px_rgba(2,132,199,0.8)]" />
               )}
             </button>
 
@@ -277,8 +277,8 @@ export default function HomePage() {
               onClick={() => setActiveView("routing")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === "routing"
-                  ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_16px_rgba(6,182,212,0.25)]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                  ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <span>🧭</span>
@@ -290,13 +290,13 @@ export default function HomePage() {
               onClick={() => setActiveView("evaluation")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === "evaluation"
-                  ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_16px_rgba(6,182,212,0.25)]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                  ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <span>📊</span>
               <span>Strategy Evaluation</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-purple-950/80 text-purple-300 border border-purple-800/60">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-purple-50 text-purple-700 border border-purple-200">
                 AI vs Baseline
               </span>
             </button>
@@ -306,8 +306,8 @@ export default function HomePage() {
               onClick={() => setActiveView("architecture")}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                 activeView === "architecture"
-                  ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_16px_rgba(6,182,212,0.25)]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
+                  ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               }`}
             >
               <span>ℹ️</span>
@@ -321,8 +321,8 @@ export default function HomePage() {
               onClick={() => setActiveView(activeView === "all" ? "operations" : "all")}
               className={`px-3 py-1.5 rounded-xl text-[11px] font-mono border transition-all cursor-pointer ${
                 activeView === "all"
-                  ? "bg-cyan-950/80 text-cyan-300 border-cyan-600 font-bold shadow-[0_0_12px_rgba(6,182,212,0.3)]"
-                  : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200"
+                  ? "bg-sky-50 text-sky-700 border-sky-300 font-bold shadow-xs"
+                  : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-50"
               }`}
               title="Toggle all sections on a single scrollable page"
             >
@@ -377,33 +377,33 @@ export default function HomePage() {
 
             {/* Operations Console: Full-Width Tabbed Operational Stream */}
             <div className="space-y-4 pt-2">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.08] pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                  <h2 className="text-sm font-bold text-slate-100 tracking-wide">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500 shadow-[0_0_6px_rgba(2,132,199,0.8)]" />
+                  <h2 className="text-sm font-bold text-slate-900 tracking-wide">
                     EMERGENCY OPERATIONS FEEDS
                   </h2>
-                  <span className="text-slate-600 hidden sm:inline">•</span>
-                  <p className="text-xs text-slate-400 hidden sm:inline">
+                  <span className="text-slate-400 hidden sm:inline">•</span>
+                  <p className="text-xs text-slate-500 hidden sm:inline">
                     Select an operational stream to monitor civilian triage, fleet telemetry, active missions, or incident logs.
                   </p>
                 </div>
 
                 {/* Operations Tabs */}
-                <div className="flex items-center gap-1.5 glass-panel p-1.5 rounded-2xl flex-wrap">
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setOpsDrawerTab("triage")}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       opsDrawerTab === "triage"
-                        ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_14px_rgba(6,182,212,0.25)]"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <span>🎯</span>
                     <span>Civilian Triage Queue</span>
                     {priorities?.queue && priorities.queue.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 font-mono border border-rose-500/30">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-mono font-bold border border-rose-200">
                         {priorities.queue.length}
                       </span>
                     )}
@@ -414,14 +414,14 @@ export default function HomePage() {
                     onClick={() => setOpsDrawerTab("fleet")}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       opsDrawerTab === "fleet"
-                        ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_14px_rgba(6,182,212,0.25)]"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <span>🚑</span>
                     <span>Rescue Fleet</span>
                     {agents.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-sky-100 text-sky-700 font-mono font-bold border border-sky-200">
                         {agents.length}
                       </span>
                     )}
@@ -432,14 +432,14 @@ export default function HomePage() {
                     onClick={() => setOpsDrawerTab("missions")}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       opsDrawerTab === "missions"
-                        ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_14px_rgba(6,182,212,0.25)]"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <span>⚡</span>
                     <span>Missions</span>
                     {missions.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-500/20 text-purple-300 font-mono border border-purple-500/30">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-100 text-purple-700 font-mono font-bold border border-purple-200">
                         {missions.length}
                       </span>
                     )}
@@ -450,14 +450,14 @@ export default function HomePage() {
                     onClick={() => setOpsDrawerTab("events")}
                     className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       opsDrawerTab === "events"
-                        ? "bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_14px_rgba(6,182,212,0.25)]"
-                        : "text-slate-400 hover:text-slate-200"
+                        ? "bg-white text-sky-700 border border-sky-300 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
                     <span>📡</span>
                     <span>Event Stream</span>
                     {events.length > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-300 font-mono border border-blue-500/30">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-700 font-mono font-bold border border-blue-200">
                         {events.length}
                       </span>
                     )}
