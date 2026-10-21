@@ -355,45 +355,53 @@ export default function HomePage() {
               isLoading={isLoading}
             />
 
-            {/* Integrated Tactical Layout: Map + Real-Time Operations Drawer */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              {/* Left Column: Interactive City Map (7 cols on lg, 8 on xl) */}
-              <div className="lg:col-span-7 xl:col-span-8 space-y-4">
-                <CityGridView
-                  grid={simulationState?.grid}
-                  route={currentRoute}
-                  startCoord={startCoord}
-                  goalCoord={goalCoord}
-                  highlightCoord={selectedCivilianCoord}
-                  agents={agents}
-                  civilians={simulationState?.civilians}
-                  selectedAgentId={selectedAgentId}
-                  selectedCivilianId={selectedCivilianId}
-                  onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
-                  onSelectCivilian={(civId) => {
-                    const match = simulationState?.civilians?.find((c) => c.id === civId);
-                    if (match) handleSelectCivilian(match.coordinate, civId);
-                  }}
-                  onSetStart={(coord) => setStartCoord(coord)}
-                  onSetGoal={(coord) => setGoalCoord(coord)}
-                />
-              </div>
+            {/* Tactical City Map (Full Width with generous space for 20x20 Grid & Inspector) */}
+            <CityGridView
+              grid={simulationState?.grid}
+              route={currentRoute}
+              startCoord={startCoord}
+              goalCoord={goalCoord}
+              highlightCoord={selectedCivilianCoord}
+              agents={agents}
+              civilians={simulationState?.civilians}
+              selectedAgentId={selectedAgentId}
+              selectedCivilianId={selectedCivilianId}
+              onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
+              onSelectCivilian={(civId) => {
+                const match = simulationState?.civilians?.find((c) => c.id === civId);
+                if (match) handleSelectCivilian(match.coordinate, civId);
+              }}
+              onSetStart={(coord) => setStartCoord(coord)}
+              onSetGoal={(coord) => setGoalCoord(coord)}
+            />
 
-              {/* Right Column: Live Operations Drawer with Tabbed Feeds (5 cols on lg, 4 on xl) */}
-              <div className="lg:col-span-5 xl:col-span-4 space-y-4">
-                {/* Operations Drawer Sub-Tabs */}
-                <div className="flex items-center gap-1 bg-[#11141D] p-1 rounded-xl border border-slate-800">
+            {/* Operations Console: Full-Width Tabbed Operational Stream */}
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">⚡</span>
+                  <h2 className="text-sm font-semibold text-slate-100">
+                    Emergency Operations Feeds
+                  </h2>
+                  <span className="text-xs text-slate-500 hidden sm:inline">•</span>
+                  <p className="text-xs text-slate-400 hidden sm:inline">
+                    Select an operational stream to monitor civilian triage, fleet telemetry, active missions, or incident logs.
+                  </p>
+                </div>
+
+                {/* Operations Tabs */}
+                <div className="flex items-center gap-1.5 bg-[#11141D] p-1 rounded-xl border border-slate-800 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setOpsDrawerTab("triage")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       opsDrawerTab === "triage"
                         ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <span>🎯</span>
-                    <span>Triage</span>
+                    <span>Civilian Triage Queue</span>
                     {priorities?.queue && priorities.queue.length > 0 && (
                       <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-950/80 text-rose-300 font-mono border border-rose-800/60">
                         {priorities.queue.length}
@@ -404,14 +412,14 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setOpsDrawerTab("fleet")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       opsDrawerTab === "fleet"
                         ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <span>🚑</span>
-                    <span>Fleet</span>
+                    <span>Rescue Fleet</span>
                     {agents.length > 0 && (
                       <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-950/80 text-cyan-300 font-mono border border-cyan-800/60">
                         {agents.length}
@@ -422,7 +430,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setOpsDrawerTab("missions")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       opsDrawerTab === "missions"
                         ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
                         : "text-slate-400 hover:text-slate-200"
@@ -440,14 +448,14 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => setOpsDrawerTab("events")}
-                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       opsDrawerTab === "events"
                         ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <span>📡</span>
-                    <span>Events</span>
+                    <span>Event Stream</span>
                     {events.length > 0 && (
                       <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-950/80 text-blue-300 font-mono border border-blue-800/60">
                         {events.length}
@@ -455,50 +463,50 @@ export default function HomePage() {
                     )}
                   </button>
                 </div>
+              </div>
 
-                {/* Sub-Tab Contents */}
-                <div className="max-h-[800px] overflow-y-auto pr-0.5 space-y-4">
-                  {opsDrawerTab === "triage" && (
-                    <RescuePriorityQueue
-                      priorities={priorities}
-                      isLoading={isLoading}
-                      selectedCivilianCoord={selectedCivilianCoord}
-                      selectedCivilianId={selectedCivilianId}
-                      onSelectCivilian={handleSelectCivilian}
-                      isSimulationActive={isSimulationActive}
-                    />
-                  )}
+              {/* Active Tab Panel (Full Width - Zero Cramping) */}
+              <div className="w-full">
+                {opsDrawerTab === "triage" && (
+                  <RescuePriorityQueue
+                    priorities={priorities}
+                    isLoading={isLoading}
+                    selectedCivilianCoord={selectedCivilianCoord}
+                    selectedCivilianId={selectedCivilianId}
+                    onSelectCivilian={handleSelectCivilian}
+                    isSimulationActive={isSimulationActive}
+                  />
+                )}
 
-                  {opsDrawerTab === "fleet" && (
-                    <RescueAgentPanel
-                      agents={agents}
-                      selectedAgentId={selectedAgentId}
-                      onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
-                      isLoading={isLoading}
-                      isSimulationActive={isSimulationActive}
-                    />
-                  )}
+                {opsDrawerTab === "fleet" && (
+                  <RescueAgentPanel
+                    agents={agents}
+                    selectedAgentId={selectedAgentId}
+                    onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
+                    isLoading={isLoading}
+                    isSimulationActive={isSimulationActive}
+                  />
+                )}
 
-                  {opsDrawerTab === "missions" && (
-                    <MissionControlPanel
-                      missions={missions}
-                      summary={dispatchSummary}
-                      isLoading={isLoading}
-                      isSimulationActive={isSimulationActive}
-                      selectedMissionId={selectedMissionId}
-                      onSelectMission={handleSelectMission}
-                    />
-                  )}
+                {opsDrawerTab === "missions" && (
+                  <MissionControlPanel
+                    missions={missions}
+                    summary={dispatchSummary}
+                    isLoading={isLoading}
+                    isSimulationActive={isSimulationActive}
+                    selectedMissionId={selectedMissionId}
+                    onSelectMission={handleSelectMission}
+                  />
+                )}
 
-                  {opsDrawerTab === "events" && (
-                    <EventTimeline
-                      events={events}
-                      currentTick={simulationState?.current_tick ?? 0}
-                      isLoading={isLoading}
-                      isSimulationActive={isSimulationActive}
-                    />
-                  )}
-                </div>
+                {opsDrawerTab === "events" && (
+                  <EventTimeline
+                    events={events}
+                    currentTick={simulationState?.current_tick ?? 0}
+                    isLoading={isLoading}
+                    isSimulationActive={isSimulationActive}
+                  />
+                )}
               </div>
             </div>
           </div>
