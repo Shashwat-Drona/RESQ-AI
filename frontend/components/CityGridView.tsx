@@ -125,19 +125,16 @@ export function CityGridView({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
-              05 / Map
-            </span>
-            <span className="text-slate-500">•</span>
+            <span className="text-sm">🗺️</span>
             <h2 className="text-sm font-semibold text-slate-100">
-              Interactive City Grid &amp; Autonomous Dispatch Map
+              Tactical City Grid &amp; Incident Map
             </h2>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800 text-slate-300 border border-slate-700">
-              {grid.rows} × {grid.cols} Matrix
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-slate-800/80 text-slate-300 border border-slate-700/60">
+              {grid.rows} × {grid.cols}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Real-time urban terrain matrix. Select any agent (🚑, 🏃), civilian (👤), or cell to inspect properties and waypoints.
+            Click any responder, civilian, or cell to inspect terrain, vitals, hazards, and waypoints.
           </p>
         </div>
 

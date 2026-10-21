@@ -28,7 +28,7 @@ export function MissionControlPanel({
     return (
       <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-6">
         <div className="flex items-center gap-2 pb-4 border-b border-slate-800">
-          <span className="text-purple-400 font-mono text-sm">05 /</span>
+          <span className="text-sm">⚡</span>
           <h3 className="text-base font-semibold text-slate-100">
             Autonomous Mission Dispatch &amp; Evacuation Control
           </h3>
@@ -110,7 +110,7 @@ export function MissionControlPanel({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-purple-400 font-mono text-sm">05 /</span>
+            <span className="text-sm">⚡</span>
             <h3 className="text-base font-semibold text-slate-100">
               Autonomous Mission Dispatch &amp; Evacuation Control
             </h3>

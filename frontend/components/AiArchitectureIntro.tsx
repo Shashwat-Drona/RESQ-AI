@@ -3,10 +3,10 @@
 import React, { useState } from "react";
 
 export function AiArchitectureIntro() {
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-900/60 to-slate-950 p-5">
+    <section className="rounded-xl border border-slate-800/80 bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-slate-950 p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className="flex h-6 w-6 rounded-lg bg-emerald-500/20 border border-emerald-500/40 items-center justify-center text-emerald-400 text-xs font-bold font-mono">
@@ -15,8 +15,8 @@ export function AiArchitectureIntro() {
           <div>
             <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
               <span>Autonomous Multi-Agent Disaster Operations &amp; Evacuation Engine</span>
-              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
-                Phase 6 Verified
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/70">
+                Phase 8 Complete
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">

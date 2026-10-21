@@ -15,7 +15,7 @@ interface HeaderProps {
 
 export function Header({
   appName = "RESQ-AI",
-  phase = "Phase 6: Disaster Command Dashboard",
+  phase = "Phase 8: Final Presentation & Benchmark Readiness",
   isConnected,
   isLoading,
   simulationStatus = "not_started",

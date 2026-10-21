@@ -21,7 +21,7 @@ export function EventTimeline({
     return (
       <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex items-center gap-2 pb-3.5 border-b border-slate-800">
-          <span className="text-blue-400 font-mono text-sm">07 /</span>
+          <span className="text-sm">📡</span>
           <h3 className="text-sm font-semibold text-slate-100">
             Emergency Operational Event Stream
           </h3>
@@ -81,7 +81,7 @@ export function EventTimeline({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-blue-400 font-mono text-sm">07 /</span>
+            <span className="text-sm">📡</span>
             <h3 className="text-sm font-semibold text-slate-100">
               Emergency Operational Event Stream
             </h3>

@@ -153,16 +153,13 @@ export function SimulationControls({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3.5 border-b border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-emerald-400 font-mono text-xs font-bold uppercase tracking-wider">
-              04 / Controls
-            </span>
-            <span className="text-slate-500">•</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <h2 className="text-sm font-semibold text-slate-100">
-              Disaster Engine Controls &amp; Autonomous Dispatch
+              Tactical Simulation Controls
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Initialize seeded environments, execute single-step ticks, or enable controlled autonomous simulation playback.
+            Configure disaster scenario, execute single ticks, or run autonomous dispatch playback.
           </p>
         </div>
 

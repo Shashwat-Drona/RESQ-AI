@@ -214,11 +214,18 @@ export default function HomePage() {
     }
   };
 
+  // View / Navigation State
+  type ActiveView = "operations" | "routing" | "evaluation" | "architecture" | "all";
+  type OpsDrawerTab = "triage" | "fleet" | "missions" | "events";
+
+  const [activeView, setActiveView] = useState<ActiveView>("operations");
+  const [opsDrawerTab, setOpsDrawerTab] = useState<OpsDrawerTab>("triage");
+
   const isConnected = !!health && !error;
   const isSimulationActive = !!simulationState?.grid;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#090B10] text-slate-100 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
       {/* Navigation & Telemetry Header */}
       <Header
         appName={appInfo?.name || "RESQ-AI"}
@@ -236,7 +243,7 @@ export default function HomePage() {
       />
 
       {/* Main Mission Control Console */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Connection & Alert Banner */}
         <ConnectionBanner
           health={health}
@@ -246,111 +253,319 @@ export default function HomePage() {
           isLoading={isLoading}
         />
 
-        {/* Academic / Demo Introduction Banner */}
-        <AiArchitectureIntro />
+        {/* Top-Level Workspace Navigation Switcher */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#11141D]/90 p-2 rounded-xl border border-slate-800/80 shadow-md">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              type="button"
+              onClick={() => setActiveView("operations")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeView === "operations"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+              }`}
+            >
+              <span>🚨</span>
+              <span>Live Operations</span>
+              {isSimulationActive && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              )}
+            </button>
 
-        {/* Section 01: High-Level Situation Overview KPI Dashboard */}
-        <SituationOverview
-          triageSummary={priorities?.summary}
-          dispatchSummary={dispatchSummary}
-          rescuedCount={priorities?.summary?.rescued_count ?? dispatchSummary?.completed_evacuations ?? 0}
-          isSimulationActive={isSimulationActive}
-        />
+            <button
+              type="button"
+              onClick={() => setActiveView("routing")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeView === "routing"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+              }`}
+            >
+              <span>🧭</span>
+              <span>A* Route Planner</span>
+            </button>
 
-        {/* Section 02: Simulation Controls & Scenario Selector */}
-        <SimulationControls
-          scenarios={scenarios}
-          simulationState={simulationState}
-          onStateUpdate={(st) => {
-            setSimulationState(st);
-            setLastChecked(new Date());
-            void refreshPriorities();
-            void refreshFleetAndMissions();
-          }}
-          isLoading={isLoading}
-        />
+            <button
+              type="button"
+              onClick={() => setActiveView("evaluation")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeView === "evaluation"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+              }`}
+            >
+              <span>📊</span>
+              <span>Strategy Evaluation</span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                AI vs Baseline
+              </span>
+            </button>
 
-        {/* Section 03: Live 2D Tactical City Grid, Responders, & Route Visualizer */}
-        <CityGridView
-          grid={simulationState?.grid}
-          route={currentRoute}
-          startCoord={startCoord}
-          goalCoord={goalCoord}
-          highlightCoord={selectedCivilianCoord}
-          agents={agents}
-          civilians={simulationState?.civilians}
-          selectedAgentId={selectedAgentId}
-          onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
-          onSetStart={(coord) => setStartCoord(coord)}
-          onSetGoal={(coord) => setGoalCoord(coord)}
-        />
+            <button
+              type="button"
+              onClick={() => setActiveView("architecture")}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                activeView === "architecture"
+                  ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
+              }`}
+            >
+              <span>ℹ️</span>
+              <span>Architecture &amp; Specs</span>
+            </button>
+          </div>
 
-        {/* Section 04: Autonomous Rescue Fleet Telemetry */}
-        <RescueAgentPanel
-          agents={agents}
-          selectedAgentId={selectedAgentId}
-          onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
-          isLoading={isLoading}
-          isSimulationActive={isSimulationActive}
-        />
-
-        {/* Section 05: Autonomous Mission Dispatch & Evacuation Control */}
-        <MissionControlPanel
-          missions={missions}
-          summary={dispatchSummary}
-          isLoading={isLoading}
-          isSimulationActive={isSimulationActive}
-          selectedMissionId={selectedMissionId}
-          onSelectMission={handleSelectMission}
-        />
-
-        {/* Section 06: Intelligent Rescue Priority Queue & Triage */}
-        <RescuePriorityQueue
-          priorities={priorities}
-          isLoading={isLoading}
-          selectedCivilianCoord={selectedCivilianCoord}
-          selectedCivilianId={selectedCivilianId}
-          onSelectCivilian={handleSelectCivilian}
-          isSimulationActive={isSimulationActive}
-        />
-
-        {/* Section 07: Live Incident Event Timeline */}
-        <EventTimeline
-          events={events}
-          currentTick={simulationState?.current_tick ?? 0}
-          isLoading={isLoading}
-          isSimulationActive={isSimulationActive}
-        />
-
-        {/* Section 08: Manual A* Route Planner & Movement Profile Evaluator */}
-        <RoutePlanner
-          gridRows={simulationState?.grid?.rows ?? 20}
-          gridCols={simulationState?.grid?.cols ?? 20}
-          startCoord={startCoord}
-          goalCoord={goalCoord}
-          onSetStart={(coord) => setStartCoord(coord)}
-          onSetGoal={(coord) => setGoalCoord(coord)}
-          onRouteCalculated={(route) => setCurrentRoute(route)}
-          currentRoute={currentRoute}
-          isSimulationActive={isSimulationActive}
-        />
-
-        {/* Section 09: Empirical Strategy Evaluation & Baseline Benchmark */}
-        <StrategyEvaluationPanel
-          scenarios={scenarios}
-          initialEvaluation={latestEvaluation}
-        />
-
-        {/* Section 10: System Telemetry Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <ProjectStatusCard info={appInfo} isLoading={isLoading} />
-          <SimulationStateCard state={simulationState} isLoading={isLoading} />
-          <ConfigCard config={config} isLoading={isLoading} />
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => setActiveView(activeView === "all" ? "operations" : "all")}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer ${
+                activeView === "all"
+                  ? "bg-blue-950/80 text-blue-300 border-blue-700 font-semibold"
+                  : "bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-200"
+              }`}
+              title="Toggle all sections on a single scrollable page"
+            >
+              {activeView === "all" ? "✕ Close All View" : "📜 Show All Sections"}
+            </button>
+          </div>
         </div>
+
+        {/* VIEW 1: LIVE OPERATIONS (Default Streamlined Command Center) */}
+        {(activeView === "operations" || activeView === "all") && (
+          <div className="space-y-6">
+            {/* Situation Overview KPI Ribbon */}
+            <SituationOverview
+              triageSummary={priorities?.summary}
+              dispatchSummary={dispatchSummary}
+              rescuedCount={priorities?.summary?.rescued_count ?? dispatchSummary?.completed_evacuations ?? 0}
+              isSimulationActive={isSimulationActive}
+            />
+
+            {/* Tactical Simulation Controls */}
+            <SimulationControls
+              scenarios={scenarios}
+              simulationState={simulationState}
+              onStateUpdate={(st) => {
+                setSimulationState(st);
+                setLastChecked(new Date());
+                void refreshPriorities();
+                void refreshFleetAndMissions();
+              }}
+              isLoading={isLoading}
+            />
+
+            {/* Integrated Tactical Layout: Map + Real-Time Operations Drawer */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* Left Column: Interactive City Map (7 cols on lg, 8 on xl) */}
+              <div className="lg:col-span-7 xl:col-span-8 space-y-4">
+                <CityGridView
+                  grid={simulationState?.grid}
+                  route={currentRoute}
+                  startCoord={startCoord}
+                  goalCoord={goalCoord}
+                  highlightCoord={selectedCivilianCoord}
+                  agents={agents}
+                  civilians={simulationState?.civilians}
+                  selectedAgentId={selectedAgentId}
+                  selectedCivilianId={selectedCivilianId}
+                  onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
+                  onSelectCivilian={(civId) => {
+                    const match = simulationState?.civilians?.find((c) => c.id === civId);
+                    if (match) handleSelectCivilian(match.coordinate, civId);
+                  }}
+                  onSetStart={(coord) => setStartCoord(coord)}
+                  onSetGoal={(coord) => setGoalCoord(coord)}
+                />
+              </div>
+
+              {/* Right Column: Live Operations Drawer with Tabbed Feeds (5 cols on lg, 4 on xl) */}
+              <div className="lg:col-span-5 xl:col-span-4 space-y-4">
+                {/* Operations Drawer Sub-Tabs */}
+                <div className="flex items-center gap-1 bg-[#11141D] p-1 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setOpsDrawerTab("triage")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      opsDrawerTab === "triage"
+                        ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span>🎯</span>
+                    <span>Triage</span>
+                    {priorities?.queue && priorities.queue.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-950/80 text-rose-300 font-mono border border-rose-800/60">
+                        {priorities.queue.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpsDrawerTab("fleet")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      opsDrawerTab === "fleet"
+                        ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span>🚑</span>
+                    <span>Fleet</span>
+                    {agents.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-950/80 text-cyan-300 font-mono border border-cyan-800/60">
+                        {agents.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpsDrawerTab("missions")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      opsDrawerTab === "missions"
+                        ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span>⚡</span>
+                    <span>Missions</span>
+                    {missions.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-purple-950/80 text-purple-300 font-mono border border-purple-800/60">
+                        {missions.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpsDrawerTab("events")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                      opsDrawerTab === "events"
+                        ? "bg-slate-800 text-white shadow-xs border border-slate-700/80"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                  >
+                    <span>📡</span>
+                    <span>Events</span>
+                    {events.length > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-950/80 text-blue-300 font-mono border border-blue-800/60">
+                        {events.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* Sub-Tab Contents */}
+                <div className="max-h-[800px] overflow-y-auto pr-0.5 space-y-4">
+                  {opsDrawerTab === "triage" && (
+                    <RescuePriorityQueue
+                      priorities={priorities}
+                      isLoading={isLoading}
+                      selectedCivilianCoord={selectedCivilianCoord}
+                      selectedCivilianId={selectedCivilianId}
+                      onSelectCivilian={handleSelectCivilian}
+                      isSimulationActive={isSimulationActive}
+                    />
+                  )}
+
+                  {opsDrawerTab === "fleet" && (
+                    <RescueAgentPanel
+                      agents={agents}
+                      selectedAgentId={selectedAgentId}
+                      onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
+                      isLoading={isLoading}
+                      isSimulationActive={isSimulationActive}
+                    />
+                  )}
+
+                  {opsDrawerTab === "missions" && (
+                    <MissionControlPanel
+                      missions={missions}
+                      summary={dispatchSummary}
+                      isLoading={isLoading}
+                      isSimulationActive={isSimulationActive}
+                      selectedMissionId={selectedMissionId}
+                      onSelectMission={handleSelectMission}
+                    />
+                  )}
+
+                  {opsDrawerTab === "events" && (
+                    <EventTimeline
+                      events={events}
+                      currentTick={simulationState?.current_tick ?? 0}
+                      isLoading={isLoading}
+                      isSimulationActive={isSimulationActive}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: DEDICATED A* ROUTE PLANNER */}
+        {activeView === "routing" && (
+          <div className="space-y-6">
+            <RoutePlanner
+              gridRows={simulationState?.grid?.rows ?? 20}
+              gridCols={simulationState?.grid?.cols ?? 20}
+              startCoord={startCoord}
+              goalCoord={goalCoord}
+              onSetStart={(coord) => setStartCoord(coord)}
+              onSetGoal={(coord) => setGoalCoord(coord)}
+              onRouteCalculated={(route) => setCurrentRoute(route)}
+              currentRoute={currentRoute}
+              isSimulationActive={isSimulationActive}
+            />
+
+            <CityGridView
+              grid={simulationState?.grid}
+              route={currentRoute}
+              startCoord={startCoord}
+              goalCoord={goalCoord}
+              highlightCoord={selectedCivilianCoord}
+              agents={agents}
+              civilians={simulationState?.civilians}
+              selectedAgentId={selectedAgentId}
+              selectedCivilianId={selectedCivilianId}
+              onSelectAgent={(id) => setSelectedAgentId(id === selectedAgentId ? null : id)}
+              onSelectCivilian={(civId) => {
+                const match = simulationState?.civilians?.find((c) => c.id === civId);
+                if (match) handleSelectCivilian(match.coordinate, civId);
+              }}
+              onSetStart={(coord) => setStartCoord(coord)}
+              onSetGoal={(coord) => setGoalCoord(coord)}
+            />
+          </div>
+        )}
+
+        {/* VIEW 3: STRATEGY EVALUATION & BENCHMARK */}
+        {activeView === "evaluation" && (
+          <div className="space-y-6">
+            <StrategyEvaluationPanel
+              scenarios={scenarios}
+              initialEvaluation={latestEvaluation}
+            />
+          </div>
+        )}
+
+        {/* VIEW 4: ARCHITECTURE & SYSTEM TELEMETRY */}
+        {(activeView === "architecture" || activeView === "all") && (
+          <div className="space-y-6">
+            <AiArchitectureIntro />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <ProjectStatusCard info={appInfo} isLoading={isLoading} />
+              <SimulationStateCard state={simulationState} isLoading={isLoading} />
+              <ConfigCard config={config} isLoading={isLoading} />
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-950 py-4 text-xs text-slate-400">
+      <footer className="border-t border-slate-800/80 bg-[#090B10] py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div>
             RESQ-AI &copy; 2026 — Disaster Response Simulator. Phase 8: Final Presentation &amp; Benchmark Readiness.
